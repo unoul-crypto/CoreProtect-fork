@@ -294,7 +294,7 @@ public class LookupCommand {
             }
         }
 
-        if (startTime <= 0 && !pageLookup && type == 4 && (argBlocks.size() > 0 || argUsers.size() > 0)) {
+        if (startTime <= 0 && !pageLookup && type == 4 && (argBlocks.size() > 0 || argUsers.size() > 0 || forceglobal)) {
             Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_LOOKUP_TIME, Selector.FIRST));
             return;
         }
@@ -505,7 +505,7 @@ public class LookupCommand {
                 }
             }
 
-            if (g == 1 && (pageLookup || argBlocks.size() > 0 || argUsers.size() > 0 || (argUsers.size() == 0 && argRadius != null))) {
+            if (g == 1 && hasLookupScope(pageLookup, argBlocks.size(), argUsers.size(), argRadius, forceglobal)) {
                 Integer MAX_RADIUS = Config.getGlobal().MAX_RADIUS;
                 if (argRadius != null) {
                     int radiusValue = argRadius[0];
@@ -677,6 +677,10 @@ public class LookupCommand {
         else {
             Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_PARAMETERS, "/co l <params>"));
         }
+    }
+
+    public static boolean hasLookupScope(boolean pageLookup, int blockCount, int userCount, Integer[] radius, boolean forceglobal) {
+        return pageLookup || blockCount > 0 || userCount > 0 || radius != null || forceglobal;
     }
 
 }

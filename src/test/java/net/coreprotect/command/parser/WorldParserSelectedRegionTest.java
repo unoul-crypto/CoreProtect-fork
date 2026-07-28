@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
+import net.coreprotect.command.LookupCommand;
+
 class WorldParserSelectedRegionTest {
 
     @Test
@@ -24,5 +26,12 @@ class WorldParserSelectedRegionTest {
     void preservesWorldEditRadiusSyntax() {
         assertTrue(WorldParser.parseWorldEdit(new String[] { "lookup", "r:#worldedit" }));
         assertTrue(WorldParser.parseWorldEdit(new String[] { "lookup", "radius:", "#we" }));
+    }
+
+    @Test
+    void recognizesExplicitGlobalRadius() {
+        assertTrue(WorldParser.parseForceGlobal(new String[] { "lookup", "r:#global" }));
+        assertTrue(WorldParser.parseForceGlobal(new String[] { "lookup", "radius:", "#global" }));
+        assertTrue(LookupCommand.hasLookupScope(false, 0, 0, null, true));
     }
 }
