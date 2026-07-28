@@ -61,6 +61,10 @@ public final class LookupActions {
         return actions.contains(CONTAINER) && actions.contains(ITEM);
     }
 
+    public static boolean requiresInventoryUser(Collection<Integer> actions) {
+        return isInventoryLookup(actions) && !isCraftingLookup(actions);
+    }
+
     public static boolean isCraftingLookup(Collection<Integer> actions) {
         return actions.contains(CRAFT) || actions.contains(CRAFTED) || actions.contains(USED_TO_CRAFT);
     }

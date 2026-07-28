@@ -300,7 +300,7 @@ public class LookupCommand {
         }
 
         if (LookupActions.isInventoryLookup(argAction)) {
-            if (argUsers.size() == 0) {
+            if (argUsers.size() == 0 && LookupActions.requiresInventoryUser(argAction)) {
                 Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_ACTION_USER));
                 return;
             }
@@ -532,7 +532,7 @@ public class LookupCommand {
                     }
                     c++;
 
-                    if (LookupActions.isInventoryLookup(argAction)) {
+                    if (LookupActions.requiresInventoryUser(argAction)) {
                         if (ruser.startsWith("#")) {
                             Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.INVALID_USERNAME, ruser));
                             return;

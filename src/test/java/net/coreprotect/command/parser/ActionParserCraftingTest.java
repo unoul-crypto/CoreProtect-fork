@@ -1,6 +1,7 @@
 package net.coreprotect.command.parser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.util.Arrays;
 import java.util.List;
@@ -13,7 +14,8 @@ class ActionParserCraftingTest {
 
     @Test
     void parsesBothCraftingSides() {
-        assertActions("craft", LookupActions.CONTAINER, LookupActions.ITEM, LookupActions.CRAFT);
+        List<Integer> craft = assertActions("craft", LookupActions.CONTAINER, LookupActions.ITEM, LookupActions.CRAFT);
+        assertFalse(LookupActions.requiresInventoryUser(craft));
         assertActions("crafting", LookupActions.CONTAINER, LookupActions.ITEM, LookupActions.CRAFT);
     }
 
@@ -30,8 +32,9 @@ class ActionParserCraftingTest {
         assertActions("used-to-craft", LookupActions.CONTAINER, LookupActions.ITEM, LookupActions.USED_TO_CRAFT);
     }
 
-    private static void assertActions(String action, Integer... expected) {
+    private static List<Integer> assertActions(String action, Integer... expected) {
         List<Integer> actual = ActionParser.parseAction(new String[] { "lookup", "a:" + action });
         assertEquals(Arrays.asList(expected), actual);
+        return actual;
     }
 }
