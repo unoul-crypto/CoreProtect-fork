@@ -23,6 +23,8 @@ This fork adds dedicated logging and selection improvements:
 * The `crafting-transactions` configuration option controls crafting logging and is enabled by default. It requires `item-transactions` to be enabled.
 * The optional `external-inventory-transactions` setting logs otherwise unclassified inventory changes caused by commands, command blocks, plugins, or the creative inventory. It is disabled by default and requires `item-transactions`.
 * External additions and removals have dedicated action types. Query both with `a:inventorychange`, only additions with `a:+inventorychange`, or only removals with `a:-inventorychange`; normal lookups and `a:inventory` also include them.
+* Already classified gameplay transactions, such as picking up, dropping, crafting, shooting, using containers, or interacting with inventory-holding blocks and entities, are suppressed from the external category to prevent duplicate records.
+* A player's saved inventory is treated as the login baseline, so reconnecting does not create external-add records for items the player already owned.
 * Paper provides complete player inventory slot-change detection. Bukkit and Spigot use a compatibility fallback for commands and creative inventory actions, but direct inventory API calls from another plugin may not be observable there.
 * `r:#worldedit`, `r:#we`, and `inselectedregion:true` limit lookups, rollbacks, and restores to the exact shape of the current WorldEdit selection, including polygonal, ellipsoid, cylinder, and other non-cuboid regions.
 

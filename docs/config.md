@@ -87,6 +87,10 @@ external-inventory-transactions: true
 
 The setting is disabled by default and requires `item-transactions` to be enabled. It covers commands, command blocks, other plugins, and the creative inventory. Paper provides complete slot-change detection. On Bukkit and Spigot, CoreProtect uses a compatibility fallback for command-driven and creative inventory changes, but direct inventory API calls made by another plugin may not be observable.
 
+Changes already covered by a normal CoreProtect action, including picking up, dropping, crafting, shooting, container use, and inventory-changing world or entity interactions, are excluded from this category to prevent duplicate records.
+
+The saved inventory loaded when a player joins is used as a baseline and is not recorded as an external addition. A genuinely different slot value applied during or after the join event is still eligible for logging.
+
 These records use dedicated action types and can be queried with `a:inventorychange`, `a:+inventorychange`, and `a:-inventorychange`.
 
 ## Disabling Logging

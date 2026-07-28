@@ -5,8 +5,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -17,6 +19,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityResurrectEvent;
@@ -27,6 +30,7 @@ import org.bukkit.event.inventory.InventoryCreativeEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerFishEvent;
@@ -34,8 +38,12 @@ import org.bukkit.event.player.PlayerItemBreakEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerItemMendEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerPickupArrowEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.projectiles.ProjectileSource;
@@ -50,24 +58,42 @@ import net.coreprotect.utility.ItemUtils;
 
 public final class ExternalInventoryChangeTracker extends Queue implements Listener {
 
+    private static final int INTERACTION_SUPPRESSION_TICKS = 1;
+    private static final int LOGIN_BASELINE_TICKS = 20;
+    // Paper can report the final slot state one or two ticks after the Bukkit
+    // event that already logged the same transaction (notably item drops).
+    private static final int KNOWN_ACTION_SUPPRESSION_TICKS = 3;
     private static final Map<UUID, PendingSlotChanges> PENDING_SLOT_CHANGES = new ConcurrentHashMap<>();
     private static final Map<UUID, PendingSnapshot> PENDING_SNAPSHOTS = new ConcurrentHashMap<>();
-    private static final Map<UUID, Object> SUPPRESSION_TOKENS = new ConcurrentHashMap<>();
+    private static final Map<UUID, LoginBaseline> LOGIN_BASELINES = new ConcurrentHashMap<>();
+    private static final Map<UUID, SuppressionToken> SUPPRESSION_TOKENS = new ConcurrentHashMap<>();
+    private static final Set<UUID> JOINED_PLAYERS = ConcurrentHashMap.newKeySet();
     private static volatile boolean paperSlotEventsAvailable;
 
     public static void setPaperSlotEventsAvailable() {
         paperSlotEventsAvailable = true;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            JOINED_PLAYERS.add(player.getUniqueId());
+        }
     }
 
-    public static void recordSlotChange(Player player, int rawSlot, ItemStack oldItem, ItemStack newItem) {
-        if (!isEnabled(player) || SUPPRESSION_TOKENS.containsKey(player.getUniqueId())) {
+    public static void recordSlotChange(Player player, int slot, ItemStack oldItem, ItemStack newItem) {
+        UUID uuid = player.getUniqueId();
+        if (!JOINED_PLAYERS.contains(uuid) || !isEnabled(player) || SUPPRESSION_TOKENS.containsKey(uuid)) {
             return;
         }
 
-        UUID uuid = player.getUniqueId();
+        LoginBaseline loginBaseline = LOGIN_BASELINES.get(uuid);
+        if (loginBaseline != null && loginBaseline.consumeIfLoaded(slot, newItem)) {
+            if (loginBaseline.isConsumed()) {
+                LOGIN_BASELINES.remove(uuid, loginBaseline);
+            }
+            return;
+        }
+
         PendingSlotChanges pending = PENDING_SLOT_CHANGES.compute(uuid, (key, existing) -> {
             PendingSlotChanges result = existing == null ? new PendingSlotChanges(player) : existing;
-            result.record(rawSlot, oldItem, newItem);
+            result.record(slot, oldItem, newItem);
             return result;
         });
         if (pending.markScheduled()) {
@@ -131,6 +157,11 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
+    public void onBlockIgnite(BlockIgniteEvent event) {
+        suppress(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
         suppress(event.getPlayer());
     }
@@ -173,6 +204,42 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
+        suppress(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        suppress(event.getPlayer(), INTERACTION_SUPPRESSION_TICKS);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
+        suppress(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerTakeLecternBook(PlayerTakeLecternBookEvent event) {
+        suppress(event.getPlayer());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onPlayerJoin(PlayerJoinEvent event) {
+        if (!paperSlotEventsAvailable) {
+            return;
+        }
+
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        PENDING_SLOT_CHANGES.remove(uuid);
+        SUPPRESSION_TOKENS.remove(uuid);
+        LoginBaseline baseline = new LoginBaseline(player.getInventory().getContents());
+        LOGIN_BASELINES.put(uuid, baseline);
+        JOINED_PLAYERS.add(uuid);
+        Scheduler.scheduleSyncDelayedTask(CoreProtect.getInstance(), () -> LOGIN_BASELINES.remove(uuid, baseline), player, LOGIN_BASELINE_TICKS);
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onCreativeInventory(InventoryCreativeEvent event) {
         if (!paperSlotEventsAvailable && event.getWhoClicked() instanceof Player) {
             captureSnapshot((Player) event.getWhoClicked());
@@ -198,7 +265,9 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
         UUID uuid = event.getPlayer().getUniqueId();
         PENDING_SLOT_CHANGES.remove(uuid);
         PENDING_SNAPSHOTS.remove(uuid);
+        LOGIN_BASELINES.remove(uuid);
         SUPPRESSION_TOKENS.remove(uuid);
+        JOINED_PLAYERS.remove(uuid);
     }
 
     private static void captureOnlinePlayerSnapshots() {
@@ -221,15 +290,22 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
     }
 
     private static void suppress(Player player) {
+        suppress(player, KNOWN_ACTION_SUPPRESSION_TICKS);
+    }
+
+    private static void suppress(Player player, int ticks) {
         if (!isEnabled(player)) {
             return;
         }
 
         UUID uuid = player.getUniqueId();
-        Object token = new Object();
-        SUPPRESSION_TOKENS.put(uuid, token);
         PENDING_SLOT_CHANGES.remove(uuid);
-        Scheduler.scheduleSyncDelayedTask(CoreProtect.getInstance(), () -> SUPPRESSION_TOKENS.remove(uuid, token), player, 1);
+        long expiresAt = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ticks * 50L);
+        SuppressionToken requestedToken = new SuppressionToken(expiresAt);
+        SuppressionToken activeToken = SUPPRESSION_TOKENS.compute(uuid, (key, existing) -> existing != null && existing.expiresAt >= expiresAt ? existing : requestedToken);
+        if (activeToken == requestedToken) {
+            Scheduler.scheduleSyncDelayedTask(CoreProtect.getInstance(), () -> SUPPRESSION_TOKENS.remove(uuid, requestedToken), player, ticks);
+        }
     }
 
     private static void flushSlotChanges(Player player, Object scheduleToken) {
@@ -346,6 +422,15 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
         return item != null && item.getAmount() > 0 && !BlockUtils.isAir(item.getType());
     }
 
+    private static boolean sameItem(ItemStack first, ItemStack second) {
+        boolean firstValid = isValid(first);
+        boolean secondValid = isValid(second);
+        if (!firstValid || !secondValid) {
+            return firstValid == secondValid;
+        }
+        return first.getAmount() == second.getAmount() && first.isSimilar(second);
+    }
+
     private static boolean isEnabled(Player player) {
         if (player == null || !player.isOnline() || player.getWorld() == null) {
             return false;
@@ -369,6 +454,48 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
 
         List<ItemStack> getAdded() {
             return cloneItems(added);
+        }
+    }
+
+    private static final class SuppressionToken {
+        private final long expiresAt;
+
+        private SuppressionToken(long expiresAt) {
+            this.expiresAt = expiresAt;
+        }
+    }
+
+    static final class LoginBaseline {
+        private final ItemStack[] contents;
+        private final boolean[] pendingSlots;
+        private int pendingCount;
+
+        LoginBaseline(ItemStack[] contents) {
+            ItemStack[] capturedContents = ItemUtils.getContainerState(contents);
+            this.contents = capturedContents == null ? new ItemStack[0] : capturedContents;
+            this.pendingSlots = new boolean[this.contents.length];
+            for (int i = 0; i < this.pendingSlots.length; i++) {
+                this.pendingSlots[i] = true;
+            }
+            this.pendingCount = this.pendingSlots.length;
+        }
+
+        synchronized boolean consumeIfLoaded(int slot, ItemStack newItem) {
+            if (slot < 0 || slot >= pendingSlots.length || !pendingSlots[slot]) {
+                return false;
+            }
+
+            if (sameItem(contents[slot], newItem)) {
+                return true;
+            }
+
+            pendingSlots[slot] = false;
+            pendingCount--;
+            return false;
+        }
+
+        synchronized boolean isConsumed() {
+            return pendingCount == 0;
         }
     }
 

@@ -11,6 +11,6 @@ public final class PaperInventorySlotChangeListener implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerInventorySlotChange(PlayerInventorySlotChangeEvent event) {
-        ExternalInventoryChangeTracker.recordSlotChange(event.getPlayer(), event.getRawSlot(), event.getOldItemStack(), event.getNewItemStack());
+        ExternalInventoryChangeTracker.recordSlotChange(event.getPlayer(), event.getSlot(), event.getOldItemStack(), event.getNewItemStack());
     }
 }
