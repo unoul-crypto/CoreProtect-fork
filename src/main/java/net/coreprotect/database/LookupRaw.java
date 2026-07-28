@@ -317,6 +317,7 @@ public class LookupRaw extends Queue {
             }
 
             boolean inventoryQuery = LookupActions.isInventoryLookup(actionList);
+            boolean craftingQuery = LookupActions.isCraftingLookup(actionList);
             boolean standardActionLookup = !actionList.contains(LookupActions.CONTAINER) && !actionList.contains(5) && !actionList.contains(LookupActions.ITEM) && !actionList.contains(LookupActions.CHAT) && !actionList.contains(LookupActions.COMMAND) && !actionList.contains(LookupActions.SESSION) && !actionList.contains(LookupActions.USERNAME) && !actionList.contains(LookupActions.SIGN);
             boolean includeEntityInteractions = !summary && lookup && standardActionLookup && (actionList.isEmpty() || actionList.contains(LookupActions.INTERACTION));
             boolean includeEntityContainers = entityContainerId != null || actionList.contains(LookupActions.CONTAINER) || inventoryQuery || (lookup && actionList.isEmpty());
@@ -496,14 +497,20 @@ public class LookupRaw extends Queue {
                 excludeUsers = excludeUserText.toString();
             }
 
-            // Specify actions to exclude from a:item
-            if ((lookup && actionList.size() == 0) || (actionList.contains(LookupActions.ITEM) && actionList.size() == 1)) {
+            // Hide internal inventory transformations from a:item while allowing crafting
+            // transactions to appear in an unfiltered lookup.
+            boolean itemActionLookup = actionList.contains(LookupActions.ITEM) && actionList.size() == 1;
+            if ((lookup && actionList.size() == 0) || itemActionLookup) {
                 StringBuilder actionText = new StringBuilder();
                 actionText = actionText.append(ItemTransactionActions.BREAK);
                 actionText.append(",").append(ItemTransactionActions.DESTROY);
                 actionText.append(",").append(ItemTransactionActions.CREATE);
                 actionText.append(",").append(ItemTransactionActions.SELL);
                 actionText.append(",").append(ItemTransactionActions.BUY);
+                if (itemActionLookup) {
+                    actionText.append(",").append(ItemTransactionActions.CRAFTED);
+                    actionText.append(",").append(ItemTransactionActions.USED_TO_CRAFT);
+                }
                 actionExclude = actionText.toString();
             }
 
@@ -535,6 +542,7 @@ public class LookupRaw extends Queue {
                                 actionText.append(",").append(ItemTransactionActions.REMOVE_ENDER);
                                 actionText.append(",").append(ItemTransactionActions.CREATE);
                                 actionText.append(",").append(ItemTransactionActions.BUY);
+                                actionText.append(",").append(ItemTransactionActions.CRAFTED);
                             }
                             if (actionTarget == ItemTransactionActions.ADD) {
                                 actionText.append(",").append(ItemTransactionActions.DROP);
@@ -544,6 +552,7 @@ public class LookupRaw extends Queue {
                                 actionText.append(",").append(ItemTransactionActions.BREAK);
                                 actionText.append(",").append(ItemTransactionActions.DESTROY);
                                 actionText.append(",").append(ItemTransactionActions.SELL);
+                                actionText.append(",").append(ItemTransactionActions.USED_TO_CRAFT);
                             }
                         }
                         // If just looking up drops/pickups, include ender chest transactions
@@ -560,6 +569,23 @@ public class LookupRaw extends Queue {
                     }
                 }
 
+                if (craftingQuery) {
+                    boolean includeCrafted = actionList.contains(LookupActions.CRAFT) || actionList.contains(LookupActions.CRAFTED);
+                    boolean includeUsedToCraft = actionList.contains(LookupActions.CRAFT) || actionList.contains(LookupActions.USED_TO_CRAFT);
+                    if (includeCrafted) {
+                        if (actionText.length() > 0) {
+                            actionText.append(",");
+                        }
+                        actionText.append(ItemTransactionActions.CRAFTED);
+                    }
+                    if (includeUsedToCraft) {
+                        if (actionText.length() > 0) {
+                            actionText.append(",");
+                        }
+                        actionText.append(ItemTransactionActions.USED_TO_CRAFT);
+                    }
+                }
+
                 action = actionText.toString();
             }
 
@@ -567,6 +593,9 @@ public class LookupRaw extends Queue {
                 if (validActions.contains(value)) {
                     validAction = true;
                 }
+            }
+            if (craftingQuery) {
+                validAction = true;
             }
 
             String bounds = "";
@@ -657,7 +686,7 @@ public class LookupRaw extends Queue {
 
             String actionPredicate = "";
             if (validAction) {
-                actionPredicate = buildActionPredicate(action, actionList, entityActionFilter);
+                actionPredicate = craftingQuery ? "action IN(" + action + ")" : buildActionPredicate(action, actionList, entityActionFilter);
                 queryBlock = queryBlock + " " + actionPredicate + " AND";
             }
             else if (inventoryQuery || actionExclude.length() > 0 || includeBlock.length() > 0 || includeEntity.length() > 0 || excludeBlock.length() > 0 || excludeEntity.length() > 0) {
@@ -850,7 +879,8 @@ public class LookupRaw extends Queue {
 
                 if (inventoryQuery) {
                     if (validAction) {
-                        baseQuery = baseQuery.replace("action IN(" + action + ")", "action IN(" + LookupActions.BLOCK_PLACE + ")");
+                        int blockAction = craftingQuery ? -1 : LookupActions.BLOCK_PLACE;
+                        baseQuery = baseQuery.replace("action IN(" + action + ")", "action IN(" + blockAction + ")");
                     }
                     else {
                         baseQuery = baseQuery.replace("action NOT IN(-1)", "action IN(" + LookupActions.BLOCK_PLACE + ")");
@@ -1120,11 +1150,11 @@ public class LookupRaw extends Queue {
         String userColumn = ConfigHandler.databaseType.getUserColumn();
         int blockPositiveAction = inventoryQuery ? LookupActions.BLOCK_BREAK : LookupActions.BLOCK_PLACE;
         int transactionPositiveAction = inventoryQuery ? ItemTransactionActions.REMOVE : ItemTransactionActions.ADD;
-        String positiveActions = transactionPositiveAction + "," + ItemTransactionActions.PICKUP + "," + ItemTransactionActions.REMOVE_ENDER + "," + ItemTransactionActions.CREATE + "," + ItemTransactionActions.BUY;
+        String positiveActions = transactionPositiveAction + "," + ItemTransactionActions.PICKUP + "," + ItemTransactionActions.REMOVE_ENDER + "," + ItemTransactionActions.CREATE + "," + ItemTransactionActions.BUY + "," + ItemTransactionActions.CRAFTED;
         String delta = "CASE WHEN amount=-1 THEN CASE WHEN action=" + blockPositiveAction + " THEN 1 ELSE -1 END "
                 + "WHEN action IN(" + positiveActions + ") THEN amount ELSE -amount END";
         String eligible = "((amount=-1 AND action IN(" + LookupActions.BLOCK_BREAK + "," + LookupActions.BLOCK_PLACE + ")) OR "
-                + "(amount<>-1 AND action BETWEEN " + ItemTransactionActions.REMOVE + " AND " + ItemTransactionActions.BUY + "))";
+                + "(amount<>-1 AND action BETWEEN " + ItemTransactionActions.REMOVE + " AND " + ItemTransactionActions.USED_TO_CRAFT + "))";
         String contributions = "SELECT " + userColumn + ",type," + delta + " AS delta FROM (" + sourceQuery + ") summary_source WHERE " + eligible;
         String grouped = "SELECT " + userColumn + ",type,SUM(CASE WHEN delta<0 THEN -delta ELSE 0 END) AS removed_amount,"
                 + "SUM(CASE WHEN delta>0 THEN delta ELSE 0 END) AS placed_amount,SUM(delta) AS net_amount "

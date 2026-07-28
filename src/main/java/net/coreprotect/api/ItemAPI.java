@@ -53,7 +53,9 @@ public class ItemAPI {
                     .append(ItemLogger.ITEM_DESTROY).append(",")
                     .append(ItemLogger.ITEM_CREATE).append(",")
                     .append(ItemLogger.ITEM_SELL).append(",")
-                    .append(ItemLogger.ITEM_BUY).append(")");
+                    .append(ItemLogger.ITEM_BUY).append(",")
+                    .append(ItemLogger.ITEM_CRAFTED).append(",")
+                    .append(ItemLogger.ITEM_USED_TO_CRAFT).append(")");
             query.append(" ORDER BY rowid DESC");
             filter.appendLimit(query);
 

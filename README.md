@@ -12,6 +12,18 @@ CoreProtect is a fast, efficient data logging and anti-griefing tool. Inspect, l
 
 CoreProtect is the [#1 anti-griefing plugin](https://bstats.org/plugin/bukkit/CoreProtect), and has been actively developed since early 2012.
 
+## CoreProtect-fork changes
+
+This fork adds dedicated logging for crafting transactions:
+
+* `a:crafted` shows the item produced by a crafting operation.
+* `a:usedtocraft` shows the ingredients consumed by that crafting operation.
+* `a:craft` shows both the crafted result and the consumed ingredients.
+* `/co lookup` includes crafting transactions by default.
+* The `crafting-transactions` configuration option controls crafting logging and is enabled by default. It requires `item-transactions` to be enabled.
+
+Only crafting operations performed after installing this fork are recorded with the new action types. Existing generic item transaction records cannot be retroactively classified as crafting operations.
+
 | Quick Links |  |
 | --- | --- |
 | CoreProtect Discord: | [discord.gg/b4DZ4jy](https://discord.gg/b4DZ4jy) |
@@ -122,7 +134,7 @@ To support the project and obtain a donation key, visit [coreprotect.net/donate]
 * Chiseled bookshelf, decorated pot, and shelf inventory transactions.
 * Copper Golem chest and jukebox transactions, plus crafter slot changes.
 * Bundle actions through the `#bundle` tag.
-* Items crafted or traded with villagers.
+* Items crafted, including the ingredients used, or traded with villagers.
 * Allay item exchanges.
 * Paintings and item frames.
 

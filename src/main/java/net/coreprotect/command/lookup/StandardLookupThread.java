@@ -426,6 +426,7 @@ public class StandardLookupThread implements Runnable {
 
                                 String selector = Selector.FIRST;
                                 String tag = Color.WHITE + "-";
+                                Phrase phrase = Phrase.LOOKUP_CONTAINER;
                                 if (daction == ItemTransactionActions.DROP || daction == ItemTransactionActions.PICKUP) {
                                     selector = (daction != ItemTransactionActions.DROP ? Selector.FIRST : Selector.SECOND);
                                     tag = (daction != ItemTransactionActions.DROP ? Color.GREEN + "+" : Color.RED + "-");
@@ -446,14 +447,19 @@ public class StandardLookupThread implements Runnable {
                                     selector = (daction == ItemTransactionActions.BUY ? Selector.FIRST : Selector.SECOND);
                                     tag = (daction == ItemTransactionActions.BUY ? Color.GREEN + "+" : Color.RED + "-");
                                 }
+                                else if (daction == ItemTransactionActions.CRAFTED || daction == ItemTransactionActions.USED_TO_CRAFT) {
+                                    phrase = Phrase.LOOKUP_CRAFT;
+                                    selector = (daction == ItemTransactionActions.CRAFTED ? Selector.FIRST : Selector.SECOND);
+                                    tag = (daction == ItemTransactionActions.CRAFTED ? Color.GREEN + "+" : Color.RED + "-");
+                                }
                                 else { // LOOKUP_CONTAINER
                                     selector = (daction == ItemTransactionActions.REMOVE ? Selector.FIRST : Selector.SECOND);
                                     tag = (daction == ItemTransactionActions.REMOVE ? Color.GREEN + "+" : Color.RED + "-");
                                 }
 
                                 String coordinateInfo = entityLocation == null ? "" : entityLocation.getOriginTooltip();
-                                Chat.sendComponent(player, timeago + " " + tag + " " + Phrase.build(Phrase.LOOKUP_CONTAINER, Color.DARK_AQUA + rbd + dplayer + Color.WHITE + rbd, "x" + amount, ChatUtils.createTooltip(Color.DARK_AQUA + rbd + dname, tooltip) + coordinateInfo + ChatUtils.filterComponent(player.hasPermission("coreprotect.give"), ChatUtils.createGiveItemComponent(Color.GREY + "(↓)", command.getName(), itemId)) + Color.WHITE, selector));
-                                PluginChannelListener.getInstance().sendData(player, Integer.parseInt(time), Phrase.LOOKUP_CONTAINER, selector, dplayer, dname, amount, dataX, dataY, dataZ, wid, rbd, true, tag.contains("+"));
+                                Chat.sendComponent(player, timeago + " " + tag + " " + Phrase.build(phrase, Color.DARK_AQUA + rbd + dplayer + Color.WHITE + rbd, "x" + amount, ChatUtils.createTooltip(Color.DARK_AQUA + rbd + dname, tooltip) + coordinateInfo + ChatUtils.filterComponent(player.hasPermission("coreprotect.give"), ChatUtils.createGiveItemComponent(Color.GREY + "(↓)", command.getName(), itemId)) + Color.WHITE, selector));
+                                PluginChannelListener.getInstance().sendData(player, Integer.parseInt(time), phrase, selector, dplayer, dname, amount, dataX, dataY, dataZ, wid, rbd, true, tag.contains("+"));
                             }
                         }
                         else {
@@ -472,11 +478,11 @@ public class StandardLookupThread implements Runnable {
                                 int dtype = Integer.parseInt(data[5]);
                                 int ddata = Integer.parseInt(data[6]);
                                 int daction = Integer.parseInt(data[7]);
-                                boolean entityInteraction = data[13] != null && Integer.parseInt(data[13]) == InventorySources.ENTITY_INTERACTION;
-                                boolean placedEntitySpawn = daction == LookupActions.ENTITY_SPAWN && EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(dtype));
-                                boolean placedEntityKill = daction == LookupActions.ENTITY_KILL && EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(dtype));
-                                int wid = Integer.parseInt(data[9]);
                                 int amount = Integer.parseInt(data[10]);
+                                boolean entityInteraction = data[13] != null && Integer.parseInt(data[13]) == InventorySources.ENTITY_INTERACTION;
+                                boolean placedEntitySpawn = amount == -1 && daction == LookupActions.ENTITY_SPAWN && EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(dtype));
+                                boolean placedEntityKill = amount == -1 && daction == LookupActions.ENTITY_KILL && EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(dtype));
+                                int wid = Integer.parseInt(data[9]);
                                 EntityDisplayLocation entityLocation = entityDisplayLocations.get(data);
                                 if (entityLocation != null) {
                                     wid = entityLocation.worldId;
@@ -550,6 +556,12 @@ public class StandardLookupThread implements Runnable {
                                         selector = (daction != ItemTransactionActions.SHOOT ? Selector.FIRST : Selector.SECOND);
                                         tag = Color.RED + "-";
                                         action = "a:item";
+                                    }
+                                    else if (daction == ItemTransactionActions.CRAFTED || daction == ItemTransactionActions.USED_TO_CRAFT) {
+                                        phrase = Phrase.LOOKUP_CRAFT;
+                                        selector = (daction == ItemTransactionActions.CRAFTED ? Selector.FIRST : Selector.SECOND);
+                                        tag = (daction == ItemTransactionActions.CRAFTED ? Color.GREEN + "+" : Color.RED + "-");
+                                        action = "a:craft";
                                     }
                                     else {
                                         phrase = Phrase.LOOKUP_CONTAINER; // {added|removed}

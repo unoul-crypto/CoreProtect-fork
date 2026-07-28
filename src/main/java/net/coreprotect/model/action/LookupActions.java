@@ -15,6 +15,9 @@ public final class LookupActions {
     public static final int SIGN = 10;
     public static final int ITEM = 11;
     public static final int ENTITY_SPAWN = 13;
+    public static final int CRAFT = 100;
+    public static final int CRAFTED = 101;
+    public static final int USED_TO_CRAFT = 102;
 
     private LookupActions() {
         throw new IllegalStateException("Model class");
@@ -53,5 +56,9 @@ public final class LookupActions {
 
     public static boolean isInventoryLookup(Collection<Integer> actions) {
         return actions.contains(CONTAINER) && actions.contains(ITEM);
+    }
+
+    public static boolean isCraftingLookup(Collection<Integer> actions) {
+        return actions.contains(CRAFT) || actions.contains(CRAFTED) || actions.contains(USED_TO_CRAFT);
     }
 }

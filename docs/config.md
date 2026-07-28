@@ -65,6 +65,18 @@ Secondary configuration files override the value specified in config.yml. If you
 * If you'd like to disable all logging for the End, copy the `config.yml` file to `world_the_end.yml` (matching the folder name for the world). Then, simply disable all logging options within the new file.
 * If you just want to disable entity death logging in the Nether, but keep all other logging options the same, simply create a file named `world_nether.yml` containing the text "rollback-entities: false".
 
+## Crafting Transactions
+
+Player crafting is logged by default. CoreProtect stores crafted results separately from the ingredients consumed by the recipe, so they can be queried with `a:+craft`/`a:crafted` and `a:-craft`/`a:usedtocraft`. Use `a:craft` to query both sides of the transaction. Crafting transactions are also included in lookups that do not specify an action.
+
+To disable new crafting records globally, set the following in `config.yml`:
+
+```yaml
+crafting-transactions: false
+```
+
+This setting requires `item-transactions` to be enabled and can be overridden by a [per-world configuration](#per-world-configuration). Existing crafting records remain available for lookup when logging is disabled.
+
 ## Disabling Logging
 
 To disable logging for specific users, blocks or commands, simply do the following:

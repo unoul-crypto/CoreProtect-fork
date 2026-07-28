@@ -142,6 +142,21 @@ public class ActionParser {
                         result.add(LookupActions.CONTAINER);
                         result.add(LookupActions.ITEM);
                     }
+                    else if (argument.equals("craft") || argument.equals("crafts") || argument.equals("crafting")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.CRAFT);
+                    }
+                    else if (argument.equals("+craft") || argument.equals("craft+") || argument.equals("crafted")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.CRAFTED);
+                    }
+                    else if (argument.equals("-craft") || argument.equals("craft-") || argument.equals("usedtocraft") || argument.equals("used-to-craft")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.USED_TO_CRAFT);
+                    }
                     else if (argument.equals("-inv") || argument.equals("inv-") || argument.equals("-inventory") || argument.equals("inventory-") || argument.equals("-inventories")) {
                         result.add(LookupActions.CONTAINER);
                         result.add(LookupActions.ITEM);

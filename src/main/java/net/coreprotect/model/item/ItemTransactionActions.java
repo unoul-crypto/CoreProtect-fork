@@ -14,6 +14,8 @@ public final class ItemTransactionActions {
     public static final int CREATE = 10;
     public static final int SELL = 11;
     public static final int BUY = 12;
+    public static final int CRAFTED = 13;
+    public static final int USED_TO_CRAFT = 14;
 
     private ItemTransactionActions() {
         throw new IllegalStateException("Internal class");
@@ -47,6 +49,10 @@ public final class ItemTransactionActions {
                 return "sell";
             case BUY:
                 return "buy";
+            case CRAFTED:
+                return "crafted";
+            case USED_TO_CRAFT:
+                return "used_to_craft";
             default:
                 return "unknown";
         }
@@ -59,6 +65,7 @@ public final class ItemTransactionActions {
             case REMOVE_ENDER:
             case CREATE:
             case BUY:
+            case CRAFTED:
                 return ADD;
             default:
                 return REMOVE;

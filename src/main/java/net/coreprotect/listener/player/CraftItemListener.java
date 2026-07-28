@@ -56,6 +56,16 @@ public final class CraftItemListener extends Queue implements Listener {
             list.add(itemStack);
             ConfigHandler.itemsCreate.put(loggingItemId, list);
         }
+        else if (action == ItemLogger.ITEM_CRAFTED) {
+            List<ItemStack> list = ConfigHandler.itemsCrafted.getOrDefault(loggingItemId, new ArrayList<>());
+            list.add(itemStack);
+            ConfigHandler.itemsCrafted.put(loggingItemId, list);
+        }
+        else if (action == ItemLogger.ITEM_USED_TO_CRAFT) {
+            List<ItemStack> list = ConfigHandler.itemsUsedToCraft.getOrDefault(loggingItemId, new ArrayList<>());
+            list.add(itemStack);
+            ConfigHandler.itemsUsedToCraft.put(loggingItemId, list);
+        }
         else {
             List<ItemStack> list = ConfigHandler.itemsDestroy.getOrDefault(loggingItemId, new ArrayList<>());
             list.add(itemStack);
@@ -72,6 +82,11 @@ public final class CraftItemListener extends Queue implements Listener {
         }
 
         HumanEntity player = event.getWhoClicked();
+        Config config = Config.getConfig(player.getWorld());
+        if (!config.ITEM_TRANSACTIONS || (!isTrade && !config.CRAFTING_TRANSACTIONS)) {
+            return;
+        }
+
         if (event.getClick() == ClickType.NUMBER_KEY && player.getInventory().getItem(event.getHotbarButton()) != null) {
             return;
         }
@@ -182,10 +197,10 @@ public final class CraftItemListener extends Queue implements Listener {
                     return;
                 }
                 removedItem.setAmount(removedItem.getAmount() * amountMultiplier);
-                logCraftedItem(location, player.getName(), removedItem, isTrade ? ItemLogger.ITEM_SELL : ItemLogger.ITEM_DESTROY);
+                logCraftedItem(location, player.getName(), removedItem, isTrade ? ItemLogger.ITEM_SELL : ItemLogger.ITEM_USED_TO_CRAFT);
             }
 
-            logCraftedItem(location, player.getName(), addItem, isTrade ? ItemLogger.ITEM_BUY : ItemLogger.ITEM_CREATE);
+            logCraftedItem(location, player.getName(), addItem, isTrade ? ItemLogger.ITEM_BUY : ItemLogger.ITEM_CRAFTED);
         }
     }
 

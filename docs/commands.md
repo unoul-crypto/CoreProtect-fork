@@ -206,6 +206,9 @@ ___
 | `a:inventory` | items added or removed from player inventories |
 | `a:+inventory` | items added to player inventories |
 | `a:-inventory` | items removed from player inventories |
+| `a:craft` | items crafted and ingredients used for crafting |
+| `a:+craft`, `a:crafted` | items produced by crafting |
+| `a:-craft`, `a:usedtocraft` | ingredients consumed by crafting |
 | `a:item` | items dropped, thrown, picked up, deposited, or withdrawn by players |
 | `a:+item` | items picked up or withdrawn by players |
 | `a:-item` | items dropped, thrown, or deposited by players |

@@ -18,7 +18,7 @@ class ItemTransactionProcess extends Queue {
 
             if (ConfigHandler.loggingItem.get(loggingItemId) != null) {
                 int current_chest = ConfigHandler.loggingItem.get(loggingItemId);
-                if (ConfigHandler.itemsPickup.get(loggingItemId) == null && ConfigHandler.itemsDrop.get(loggingItemId) == null && ConfigHandler.itemsThrown.get(loggingItemId) == null && ConfigHandler.itemsShot.get(loggingItemId) == null && ConfigHandler.itemsBreak.get(loggingItemId) == null && ConfigHandler.itemsDestroy.get(loggingItemId) == null && ConfigHandler.itemsCreate.get(loggingItemId) == null && ConfigHandler.itemsSell.get(loggingItemId) == null && ConfigHandler.itemsBuy.get(loggingItemId) == null) {
+                if (ConfigHandler.itemsPickup.get(loggingItemId) == null && ConfigHandler.itemsDrop.get(loggingItemId) == null && ConfigHandler.itemsThrown.get(loggingItemId) == null && ConfigHandler.itemsShot.get(loggingItemId) == null && ConfigHandler.itemsBreak.get(loggingItemId) == null && ConfigHandler.itemsDestroy.get(loggingItemId) == null && ConfigHandler.itemsCreate.get(loggingItemId) == null && ConfigHandler.itemsSell.get(loggingItemId) == null && ConfigHandler.itemsBuy.get(loggingItemId) == null && ConfigHandler.itemsCrafted.get(loggingItemId) == null && ConfigHandler.itemsUsedToCraft.get(loggingItemId) == null) {
                     return;
                 }
                 if (current_chest == forceData) {
@@ -34,6 +34,8 @@ class ItemTransactionProcess extends Queue {
                         ConfigHandler.itemsCreate.remove(loggingItemId);
                         ConfigHandler.itemsSell.remove(loggingItemId);
                         ConfigHandler.itemsBuy.remove(loggingItemId);
+                        ConfigHandler.itemsCrafted.remove(loggingItemId);
+                        ConfigHandler.itemsUsedToCraft.remove(loggingItemId);
                         ConfigHandler.loggingItem.remove(loggingItemId);
                     }
                     else {

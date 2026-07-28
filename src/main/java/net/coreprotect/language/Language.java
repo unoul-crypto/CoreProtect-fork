@@ -77,7 +77,7 @@ public class Language {
         phrases.put(Phrase.GLOBAL_LOOKUP, "Don't specify a radius to do a global lookup.");
         phrases.put(Phrase.GLOBAL_ROLLBACK, "Use \"{0}\" to do a global {rollback|restore}");
         phrases.put(Phrase.HELP_ACTION_1, "Restrict the lookup to a certain action.");
-        phrases.put(Phrase.HELP_ACTION_2, "Examples: [a:block], [a:+block], [a:-block] [a:click], [a:container], [a:inventory], [a:item], [a:kill], [a:spawn], [a:chat], [a:command], [a:sign], [a:session], [a:username]");
+        phrases.put(Phrase.HELP_ACTION_2, "Examples: [a:block], [a:+block], [a:-block] [a:click], [a:container], [a:inventory], [a:craft], [a:item], [a:kill], [a:spawn], [a:chat], [a:command], [a:sign], [a:session], [a:username]");
         phrases.put(Phrase.HELP_COMMAND, "Display more info for that command.");
         phrases.put(Phrase.HELP_EXCLUDE_1, "Exclude blocks/users.");
         phrases.put(Phrase.HELP_EXCLUDE_2, "Examples: [e:stone], [e:Notch], [e:stone,Notch]");
@@ -156,6 +156,7 @@ public class Language {
         phrases.put(Phrase.LOGGING_TIME_LIMIT, "Logging time limit reached. Discarding data and shutting down.");
         phrases.put(Phrase.LOOKUP_BLOCK, "{0} {placed|broke} {1}.");
         phrases.put(Phrase.LOOKUP_CONTAINER, "{0} {added|removed} {1} {2}.");
+        phrases.put(Phrase.LOOKUP_CRAFT, "{0} {crafted|used for crafting} {1} {2}.");
         phrases.put(Phrase.LOOKUP_HEADER, "{0} Lookup Results");
         phrases.put(Phrase.LOOKUP_INTERACTION, "{0} {clicked|killed} {1}.");
         phrases.put(Phrase.LOOKUP_ENTITY_INTERACTION, "{0} {clicked|sheared|leashed|unleashed} {1}.");

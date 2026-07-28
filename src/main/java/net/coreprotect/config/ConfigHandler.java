@@ -174,6 +174,8 @@ public class ConfigHandler extends Queue {
     public static ConcurrentHashMap<String, List<ItemStack>> itemsCreate = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, List<ItemStack>> itemsSell = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, List<ItemStack>> itemsBuy = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, List<ItemStack>> itemsCrafted = new ConcurrentHashMap<>();
+    public static ConcurrentHashMap<String, List<ItemStack>> itemsUsedToCraft = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, Object[]> hopperAbort = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, Object[]> hopperSuccess = new ConcurrentHashMap<>();
     public static ConcurrentHashMap<String, ConcurrentHashMap<String, Long>> dispenserNoChange = new ConcurrentHashMap<>();
