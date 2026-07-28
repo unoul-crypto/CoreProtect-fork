@@ -39,6 +39,7 @@ public class HelpCommand {
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "i:<include> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_6, Selector.FIRST));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "e:<exclude> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_7, Selector.FIRST));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "f:<filter> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_FILTER_1));
+                    Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "inselectedregion:<true|false> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_8, Selector.FIRST));
                     Chat.sendMessage(player, Color.GREY + Color.ITALIC + Phrase.build(Phrase.HELP_PARAMETER, "/co help <param>"));
                 }
                 else if (helpcommand.equals("rollback") || helpcommand.equals("rollbacks") || helpcommand.equals("rb") || helpcommand.equals("ro")) {
@@ -49,6 +50,7 @@ public class HelpCommand {
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "a:<action> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_5, Selector.SECOND));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "i:<include> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_6, Selector.SECOND));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "e:<exclude> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_7, Selector.SECOND));
+                    Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "inselectedregion:<true|false> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_8, Selector.SECOND));
                     Chat.sendMessage(player, Color.GREY + Color.ITALIC + Phrase.build(Phrase.HELP_PARAMETER, "/co help <param>"));
                 }
                 else if (helpcommand.equals("restore") || helpcommand.equals("restores") || helpcommand.equals("re") || helpcommand.equals("rs")) {
@@ -59,6 +61,7 @@ public class HelpCommand {
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "a:<action> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_5, Selector.THIRD));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "i:<include> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_6, Selector.THIRD));
                     Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "e:<exclude> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_7, Selector.THIRD));
+                    Chat.sendMessage(player, Color.DARK_AQUA + "| " + Color.GREY + "inselectedregion:<true|false> " + Color.WHITE + "- " + Phrase.build(Phrase.HELP_PARAMS_8, Selector.THIRD));
                     Chat.sendMessage(player, Color.GREY + Color.ITALIC + Phrase.build(Phrase.HELP_PARAMETER, "/co help <param>"));
                 }
                 else if (helpcommand.equals("lookup") || helpcommand.equals("lookups") || helpcommand.equals("l")) {

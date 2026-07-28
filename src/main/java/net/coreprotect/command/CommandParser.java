@@ -170,19 +170,14 @@ public class CommandParser {
      * @return The parsed radius
      */
     protected static Integer[] parseRadius(String[] inputArguments, CommandSender user, Location location) {
-        Integer[] result = LocationParser.parseRadius(inputArguments, user, location);
-
-        // Handle WorldEdit case which LocationParser returned as null
-        if (result == null && WorldParser.parseWorldEdit(inputArguments)) {
+        if (WorldParser.parseWorldEdit(inputArguments)) {
             if (user.getServer().getPluginManager().getPlugin("WorldEdit") != null) {
-                Integer[] worldEditResult = WorldEditHandler.runWorldEditCommand(user);
-                if (worldEditResult != null) {
-                    result = worldEditResult;
-                }
+                return WorldEditHandler.runWorldEditCommand(user);
             }
+            return null;
         }
 
-        return result;
+        return LocationParser.parseRadius(inputArguments, user, location);
     }
 
     /**

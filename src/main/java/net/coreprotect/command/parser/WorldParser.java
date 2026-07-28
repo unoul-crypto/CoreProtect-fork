@@ -9,6 +9,7 @@ import net.coreprotect.utility.WorldUtils;
  * Parser for world-related command arguments
  */
 public class WorldParser {
+    private static final String SELECTED_REGION_PARAMETER = "inselectedregion:";
 
     /**
      * Parse world from command arguments
@@ -121,7 +122,17 @@ public class WorldParser {
                 argument = argument.replaceAll("\\\\", "");
                 argument = argument.replaceAll("'", "");
 
-                if (argument.equals("r:") || argument.equals("radius:")) {
+                if (argument.equals(SELECTED_REGION_PARAMETER)) {
+                    next = 3;
+                }
+                else if (next == 3 || argument.startsWith(SELECTED_REGION_PARAMETER)) {
+                    argument = argument.replaceFirst(SELECTED_REGION_PARAMETER, "");
+                    if (argument.equals("true")) {
+                        result = true;
+                    }
+                    next = 0;
+                }
+                else if (argument.equals("r:") || argument.equals("radius:")) {
                     next = 2;
                 }
                 else if (next == 2 || argument.startsWith("r:") || argument.startsWith("radius:")) {

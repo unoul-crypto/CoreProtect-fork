@@ -24,7 +24,7 @@ public class TabHandler implements TabCompleter {
 
     // private static String[] COMMANDS = new String[] { "help", "inspect", "rollback", "restore", "lookup", "purge", "reload", "status", "near", "undo" }; // max 10!
     private static final String[] HELP = new String[] { "inspect", "rollback", "restore", "lookup", "purge", "teleport", "status", "params", "users", "time", "radius", "action", "include", "exclude", "filter" };
-    private static final String[] PARAMS = new String[] { "user:", "time:", "radius:", "action:", "include:", "exclude:", "filter:", "#container" };
+    private static final String[] PARAMS = new String[] { "user:", "time:", "radius:", "inselectedregion:", "action:", "include:", "exclude:", "filter:", "#container" };
     private static final String[] ACTIONS = new String[] { "block", "+block", "-block", "click", "kill", "spawn", "+container", "-container", "container", "chat", "command", "+inventory", "-inventory", "inventory", "craft", "+craft", "-craft", "crafted", "usedtocraft", "item", "+item", "-item", "sign", "session", "+session", "-session", "username" };
     private static final String[] NUMBERS = new String[] { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" };
     private static final String[] TIMES = new String[] { "w", "d", "h", "m", "s" };
@@ -47,7 +47,10 @@ public class TabHandler implements TabCompleter {
         ParamState paramState = getParamState(sender, args);
 
         // Handle param-specific completions
-        if (isActionParam(lastArg, currentArg) && hasLookupPermission(sender)) {
+        if (isSelectedRegionParam(lastArg, currentArg) && hasLookupCommand(argument0, sender)) {
+            return handleSelectedRegionParamCompletions(currentArg, lastArg);
+        }
+        else if (isActionParam(lastArg, currentArg) && hasLookupPermission(sender)) {
             return handleActionParamCompletions(currentArg, lastArg);
         }
         else if (isUserParam(lastArg, currentArg) && hasLookupPermission(sender)) {
@@ -142,6 +145,10 @@ public class TabHandler implements TabCompleter {
         return lastArg.equals("r:") || lastArg.equals("radius:") || currentArg.startsWith("r:") || currentArg.startsWith("radius:");
     }
 
+    private boolean isSelectedRegionParam(String lastArg, String currentArg) {
+        return lastArg.equals("inselectedregion:") || currentArg.startsWith("inselectedregion:");
+    }
+
     private boolean isMaterialParam(String lastArg, String currentArg) {
         return lastArg.equals("i:") || lastArg.equals("include:") || lastArg.equals("item:") || lastArg.equals("items:") || lastArg.equals("b:") || lastArg.equals("block:") || lastArg.equals("blocks:") || currentArg.startsWith("i:") || currentArg.startsWith("include:") || currentArg.startsWith("item:") || currentArg.startsWith("items:") || currentArg.startsWith("b:") || currentArg.startsWith("block:") || currentArg.startsWith("blocks:") || lastArg.equals("e:") || lastArg.equals("exclude:") || currentArg.startsWith("e:") || currentArg.startsWith("exclude:");
     }
@@ -153,6 +160,7 @@ public class TabHandler implements TabCompleter {
         boolean hasExclude;
         boolean hasFilter;
         boolean hasRadius;
+        boolean hasSelectedRegion;
         boolean hasTime;
         boolean hasContainer;
         boolean hasCount;
@@ -162,11 +170,13 @@ public class TabHandler implements TabCompleter {
         boolean hasPage;
         boolean validContainer;
         boolean pageLookup;
+        boolean worldEditAvailable;
     }
 
     private ParamState getParamState(CommandSender sender, String[] args) {
         ParamState state = new ParamState();
         String senderName = sender.getName();
+        state.worldEditAvailable = Bukkit.getServer().getPluginManager().getPlugin("WorldEdit") != null;
 
         if (ConfigHandler.lookupType.get(senderName) != null && ConfigHandler.lookupPage.get(senderName) != null) {
             state.pageLookup = true;
@@ -213,6 +223,9 @@ public class TabHandler implements TabCompleter {
             else if (arg.contains("r:") || arg.contains("radius:")) {
                 state.hasRadius = true;
             }
+            else if (arg.startsWith("inselectedregion:")) {
+                state.hasSelectedRegion = true;
+            }
         }
 
         if (!state.hasContainer) {
@@ -231,6 +244,15 @@ public class TabHandler implements TabCompleter {
         }
 
         return state;
+    }
+
+    private List<String> handleSelectedRegionParamCompletions(String currentArg, String lastArg) {
+        if (lastArg.equals("inselectedregion:")) {
+            return StringUtil.copyPartialMatches(currentArg, Arrays.asList("true", "false"), new ArrayList<>(2));
+        }
+
+        List<String> completions = Arrays.asList("inselectedregion:true", "inselectedregion:false");
+        return StringUtil.copyPartialMatches(currentArg, completions, new ArrayList<>(2));
     }
 
     private List<String> handleActionParamCompletions(String currentArg, String lastArg) {
@@ -499,6 +521,9 @@ public class TabHandler implements TabCompleter {
                 params.add(param);
             }
             else if (param.equals("radius:") && !state.hasRadius) {
+                params.add(param);
+            }
+            else if (param.equals("inselectedregion:") && state.worldEditAvailable && !state.hasSelectedRegion) {
                 params.add(param);
             }
             else if (param.equals("time:") && !state.hasTime) {

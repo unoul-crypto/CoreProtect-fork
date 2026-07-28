@@ -32,6 +32,7 @@ public final class MessageFilterParser {
             "filter:",
             "i:",
             "include:",
+            "inselectedregion:",
             "item:",
             "items:",
             "location:",

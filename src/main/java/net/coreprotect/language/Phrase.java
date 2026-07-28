@@ -82,6 +82,7 @@ public enum Phrase {
     HELP_PARAMS_5,
     HELP_PARAMS_6,
     HELP_PARAMS_7,
+    HELP_PARAMS_8,
     HELP_PURGE_1,
     HELP_PURGE_2,
     HELP_PURGE_3,

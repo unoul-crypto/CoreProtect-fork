@@ -107,6 +107,7 @@ public class Language {
         phrases.put(Phrase.HELP_PARAMS_5, "Restrict the {lookup|rollback|restore} to a certain action.");
         phrases.put(Phrase.HELP_PARAMS_6, "Include specific blocks/entities in the {lookup|rollback|restore}.");
         phrases.put(Phrase.HELP_PARAMS_7, "Exclude blocks/users from the {lookup|rollback|restore}.");
+        phrases.put(Phrase.HELP_PARAMS_8, "Limit the {lookup|rollback|restore} to your WorldEdit selection.");
         phrases.put(Phrase.HELP_PURGE_1, "Delete data older than specified time.");
         phrases.put(Phrase.HELP_PURGE_2, "For example, \"{0}\" will delete all data older than one month, and only keep the last 30 days of data.");
         phrases.put(Phrase.HELP_PURGE_3, "Specify the amount of time to purge.");
