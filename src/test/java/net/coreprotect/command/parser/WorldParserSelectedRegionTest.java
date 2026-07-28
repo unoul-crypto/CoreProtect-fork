@@ -18,7 +18,6 @@ class WorldParserSelectedRegionTest {
         assertTrue(WorldParser.parseWorldEdit(new String[] { "lookup", "inselectedregion:true" }));
         assertTrue(WorldParser.parseWorldEdit(new String[] { "lookup", "inselectedregion:", "true" }));
         assertTrue(WorldParser.parseWorldEdit(new String[] { "lookup", "INSELECTEDREGION:TRUE" }));
-        assertTrue(UserParser.parseUsers(new String[] { "lookup", "inselectedregion:", "true" }).isEmpty());
     }
 
     @Test

@@ -77,6 +77,18 @@ crafting-transactions: false
 
 This setting requires `item-transactions` to be enabled and can be overridden by a [per-world configuration](#per-world-configuration). Existing crafting records remain available for lookup when logging is disabled.
 
+## External Inventory Transactions
+
+Otherwise unclassified additions to and removals from player inventories can be logged with:
+
+```yaml
+external-inventory-transactions: true
+```
+
+The setting is disabled by default and requires `item-transactions` to be enabled. It covers commands, command blocks, other plugins, and the creative inventory. Paper provides complete slot-change detection. On Bukkit and Spigot, CoreProtect uses a compatibility fallback for command-driven and creative inventory changes, but direct inventory API calls made by another plugin may not be observable.
+
+These records use dedicated action types and can be queried with `a:inventorychange`, `a:+inventorychange`, and `a:-inventorychange`.
+
 ## Disabling Logging
 
 To disable logging for specific users, blocks or commands, simply do the following:

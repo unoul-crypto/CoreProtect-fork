@@ -41,6 +41,8 @@ public class ItemLogger {
     public static final int ITEM_BUY = ItemTransactionActions.BUY;
     public static final int ITEM_CRAFTED = ItemTransactionActions.CRAFTED;
     public static final int ITEM_USED_TO_CRAFT = ItemTransactionActions.USED_TO_CRAFT;
+    public static final int ITEM_EXTERNAL_ADD = ItemTransactionActions.EXTERNAL_ADD;
+    public static final int ITEM_EXTERNAL_REMOVE = ItemTransactionActions.EXTERNAL_REMOVE;
 
     private ItemLogger() {
         throw new IllegalStateException("Database class");
@@ -98,6 +100,14 @@ public class ItemLogger {
             ItemStack[] itemsUsedToCraft = new ItemStack[usedToCraftList.size()];
             itemsUsedToCraft = usedToCraftList.toArray(itemsUsedToCraft);
 
+            List<ItemStack> externalAddList = ConfigHandler.itemsExternalAdd.getOrDefault(loggingItemId, new ArrayList<>());
+            ItemStack[] itemsExternalAdd = new ItemStack[externalAddList.size()];
+            itemsExternalAdd = externalAddList.toArray(itemsExternalAdd);
+
+            List<ItemStack> externalRemoveList = ConfigHandler.itemsExternalRemove.getOrDefault(loggingItemId, new ArrayList<>());
+            ItemStack[] itemsExternalRemove = new ItemStack[externalRemoveList.size()];
+            itemsExternalRemove = externalRemoveList.toArray(itemsExternalRemove);
+
             ItemUtils.mergeItems(null, itemPickups);
             ItemUtils.mergeItems(null, itemDrops);
             ItemUtils.mergeItems(null, itemThrows);
@@ -109,6 +119,8 @@ public class ItemLogger {
             ItemUtils.mergeItems(null, itemBuys);
             ItemUtils.mergeItems(null, itemsCrafted);
             ItemUtils.mergeItems(null, itemsUsedToCraft);
+            ItemUtils.mergeItems(null, itemsExternalAdd);
+            ItemUtils.mergeItems(null, itemsExternalRemove);
             logTransaction(preparedStmt, batchCount, offset, user, location, itemPickups, ITEM_PICKUP);
             logTransaction(preparedStmt, batchCount, offset, user, location, itemDrops, ITEM_DROP);
             logTransaction(preparedStmt, batchCount, offset, user, location, itemThrows, ITEM_THROW);
@@ -120,6 +132,8 @@ public class ItemLogger {
             logTransaction(preparedStmt, batchCount, offset, user, location, itemBuys, ITEM_BUY);
             logTransaction(preparedStmt, batchCount, offset, user, location, itemsCrafted, ITEM_CRAFTED);
             logTransaction(preparedStmt, batchCount, offset, user, location, itemsUsedToCraft, ITEM_USED_TO_CRAFT);
+            logTransaction(preparedStmt, batchCount, offset, user, location, itemsExternalAdd, ITEM_EXTERNAL_ADD);
+            logTransaction(preparedStmt, batchCount, offset, user, location, itemsExternalRemove, ITEM_EXTERNAL_REMOVE);
         }
         catch (Exception e) {
             Database.handleWriteFailure(e);

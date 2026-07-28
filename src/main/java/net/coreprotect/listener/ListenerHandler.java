@@ -43,6 +43,7 @@ import net.coreprotect.listener.entity.TrackedEntityTeleportListener;
 import net.coreprotect.listener.player.ArmorStandManipulateListener;
 import net.coreprotect.listener.player.CraftItemListener;
 import net.coreprotect.listener.player.EntityInteractionListener;
+import net.coreprotect.listener.player.ExternalInventoryChangeTracker;
 import net.coreprotect.listener.player.FoodLevelChangeListener;
 import net.coreprotect.listener.player.InventoryChangeListener;
 import net.coreprotect.listener.player.InventoryClickListener;
@@ -71,6 +72,7 @@ import net.coreprotect.paper.listener.CopperGolemChestListener;
 import net.coreprotect.paper.listener.FlowerPotManipulateListener;
 import net.coreprotect.paper.listener.LegacyTNTPrimeListener;
 import net.coreprotect.paper.listener.PaperChatListener;
+import net.coreprotect.paper.listener.PaperInventorySlotChangeListener;
 
 public final class ListenerHandler {
 
@@ -178,11 +180,20 @@ public final class ListenerHandler {
         catch (Exception e) {
             // Ignore registration failures to remain compatible with older servers.
         }
+        try {
+            Class.forName("io.papermc.paper.event.player.PlayerInventorySlotChangeEvent");
+            ExternalInventoryChangeTracker.setPaperSlotEventsAvailable();
+            pluginManager.registerEvents(new PaperInventorySlotChangeListener(), plugin);
+        }
+        catch (Exception e) {
+            // Bukkit/Spigot use command and creative inventory snapshot fallbacks.
+        }
 
         // Player Listeners
         pluginManager.registerEvents(new ArmorStandManipulateListener(), plugin);
         pluginManager.registerEvents(new CraftItemListener(), plugin);
         pluginManager.registerEvents(new EntityInteractionListener(), plugin);
+        pluginManager.registerEvents(new ExternalInventoryChangeTracker(), plugin);
         pluginManager.registerEvents(new FoodLevelChangeListener(), plugin);
         pluginManager.registerEvents(new InventoryChangeListener(), plugin);
         pluginManager.registerEvents(new InventoryClickListener(), plugin);

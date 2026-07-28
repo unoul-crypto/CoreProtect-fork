@@ -452,6 +452,11 @@ public class StandardLookupThread implements Runnable {
                                     selector = (daction == ItemTransactionActions.CRAFTED ? Selector.FIRST : Selector.SECOND);
                                     tag = (daction == ItemTransactionActions.CRAFTED ? Color.GREEN + "+" : Color.RED + "-");
                                 }
+                                else if (daction == ItemTransactionActions.EXTERNAL_ADD || daction == ItemTransactionActions.EXTERNAL_REMOVE) {
+                                    phrase = Phrase.LOOKUP_INVENTORY_CHANGE;
+                                    selector = (daction == ItemTransactionActions.EXTERNAL_ADD ? Selector.FIRST : Selector.SECOND);
+                                    tag = (daction == ItemTransactionActions.EXTERNAL_ADD ? Color.GREEN + "+" : Color.RED + "-");
+                                }
                                 else { // LOOKUP_CONTAINER
                                     selector = (daction == ItemTransactionActions.REMOVE ? Selector.FIRST : Selector.SECOND);
                                     tag = (daction == ItemTransactionActions.REMOVE ? Color.GREEN + "+" : Color.RED + "-");
@@ -562,6 +567,12 @@ public class StandardLookupThread implements Runnable {
                                         selector = (daction == ItemTransactionActions.CRAFTED ? Selector.FIRST : Selector.SECOND);
                                         tag = (daction == ItemTransactionActions.CRAFTED ? Color.GREEN + "+" : Color.RED + "-");
                                         action = "a:craft";
+                                    }
+                                    else if (daction == ItemTransactionActions.EXTERNAL_ADD || daction == ItemTransactionActions.EXTERNAL_REMOVE) {
+                                        phrase = Phrase.LOOKUP_INVENTORY_CHANGE;
+                                        selector = (daction == ItemTransactionActions.EXTERNAL_ADD ? Selector.FIRST : Selector.SECOND);
+                                        tag = (daction == ItemTransactionActions.EXTERNAL_ADD ? Color.GREEN + "+" : Color.RED + "-");
+                                        action = "a:inventorychange";
                                     }
                                     else {
                                         phrase = Phrase.LOOKUP_CONTAINER; // {added|removed}

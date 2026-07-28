@@ -266,7 +266,7 @@ public class Lookup extends Queue {
             int action = (Integer) row[8];
             int amount = (Integer) row[11];
             boolean blockContribution = amount == -1 && (action == LookupActions.BLOCK_BREAK || action == LookupActions.BLOCK_PLACE);
-            boolean transactionContribution = amount != -1 && action >= ItemTransactionActions.REMOVE && action <= ItemTransactionActions.USED_TO_CRAFT;
+            boolean transactionContribution = amount != -1 && action >= ItemTransactionActions.REMOVE && action <= ItemTransactionActions.EXTERNAL_REMOVE;
             if (!blockContribution && !transactionContribution) {
                 continue;
             }
@@ -281,7 +281,8 @@ public class Lookup extends Queue {
                         || action == ItemTransactionActions.REMOVE_ENDER
                         || action == ItemTransactionActions.CREATE
                         || action == ItemTransactionActions.BUY
-                        || action == ItemTransactionActions.CRAFTED;
+                        || action == ItemTransactionActions.CRAFTED
+                        || action == ItemTransactionActions.EXTERNAL_ADD;
                 delta = positive ? amount : -amount;
             }
 

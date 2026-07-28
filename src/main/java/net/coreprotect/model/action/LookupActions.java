@@ -18,6 +18,9 @@ public final class LookupActions {
     public static final int CRAFT = 100;
     public static final int CRAFTED = 101;
     public static final int USED_TO_CRAFT = 102;
+    public static final int EXTERNAL_INVENTORY = 103;
+    public static final int EXTERNAL_INVENTORY_ADD = 104;
+    public static final int EXTERNAL_INVENTORY_REMOVE = 105;
 
     private LookupActions() {
         throw new IllegalStateException("Model class");
@@ -60,5 +63,9 @@ public final class LookupActions {
 
     public static boolean isCraftingLookup(Collection<Integer> actions) {
         return actions.contains(CRAFT) || actions.contains(CRAFTED) || actions.contains(USED_TO_CRAFT);
+    }
+
+    public static boolean isExternalInventoryLookup(Collection<Integer> actions) {
+        return actions.contains(EXTERNAL_INVENTORY) || actions.contains(EXTERNAL_INVENTORY_ADD) || actions.contains(EXTERNAL_INVENTORY_REMOVE);
     }
 }

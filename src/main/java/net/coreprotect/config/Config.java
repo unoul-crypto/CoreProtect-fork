@@ -95,6 +95,7 @@ public class Config extends Language {
     public boolean LIQUID_TRACKING;
     public boolean ITEM_TRANSACTIONS;
     public boolean CRAFTING_TRANSACTIONS;
+    public boolean EXTERNAL_INVENTORY_TRANSACTIONS;
     public boolean ITEM_DROPS;
     public boolean ITEM_PICKUPS;
     public boolean HOPPER_TRANSACTIONS;
@@ -166,6 +167,7 @@ public class Config extends Language {
         DEFAULT_VALUES.put("liquid-tracking", "true");
         DEFAULT_VALUES.put("item-transactions", "true");
         DEFAULT_VALUES.put("crafting-transactions", "true");
+        DEFAULT_VALUES.put("external-inventory-transactions", "false");
         DEFAULT_VALUES.put("item-drops", "true");
         DEFAULT_VALUES.put("item-pickups", "true");
         DEFAULT_VALUES.put("hopper-transactions", "true");
@@ -217,6 +219,7 @@ public class Config extends Language {
         HEADERS.put("liquid-tracking", new String[] { "# Allows liquid to be properly tracked and linked to players.", "# For example, if a player places water which flows and destroys torches,", "# it can all be properly restored by rolling back that single player." });
         HEADERS.put("item-transactions", new String[] { "# Track item transactions, such as when a player takes items from", "# a chest, furnace, or dispenser." });
         HEADERS.put("crafting-transactions", new String[] { "# Logs items crafted by players and the ingredients used to craft them.", "# Requires item-transactions to also be enabled." });
+        HEADERS.put("external-inventory-transactions", new String[] { "# Logs otherwise unclassified changes to player inventories, such as changes", "# made by commands, command blocks, plugins, or the creative inventory.", "# Requires item-transactions to also be enabled." });
         HEADERS.put("item-drops", new String[] { "# Logs items dropped by players." });
         HEADERS.put("item-pickups", new String[] { "# Logs items picked up by players." });
         HEADERS.put("hopper-transactions", new String[] { "# Track all hopper transactions, such as when a hopper removes items from a", "# chest, furnace, or dispenser." });
@@ -295,6 +298,7 @@ public class Config extends Language {
         this.LIQUID_TRACKING = this.getBoolean("liquid-tracking");
         this.ITEM_TRANSACTIONS = this.getBoolean("item-transactions");
         this.CRAFTING_TRANSACTIONS = this.getBoolean("crafting-transactions");
+        this.EXTERNAL_INVENTORY_TRANSACTIONS = this.getBoolean("external-inventory-transactions");
         this.ITEM_DROPS = this.getBoolean("item-drops");
         this.ITEM_PICKUPS = this.getBoolean("item-pickups");
         this.HOPPER_TRANSACTIONS = this.getBoolean("hopper-transactions");

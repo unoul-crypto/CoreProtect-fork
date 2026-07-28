@@ -14,16 +14,19 @@ CoreProtect is the [#1 anti-griefing plugin](https://bstats.org/plugin/bukkit/Co
 
 ## CoreProtect-fork changes
 
-This fork adds dedicated logging for crafting transactions:
+This fork adds dedicated logging and selection improvements:
 
 * `a:crafted` shows the item produced by a crafting operation.
 * `a:usedtocraft` shows the ingredients consumed by that crafting operation.
 * `a:craft` shows both the crafted result and the consumed ingredients.
 * `/co lookup` includes crafting transactions by default.
 * The `crafting-transactions` configuration option controls crafting logging and is enabled by default. It requires `item-transactions` to be enabled.
+* The optional `external-inventory-transactions` setting logs otherwise unclassified inventory changes caused by commands, command blocks, plugins, or the creative inventory. It is disabled by default and requires `item-transactions`.
+* External additions and removals have dedicated action types. Query both with `a:inventorychange`, only additions with `a:+inventorychange`, or only removals with `a:-inventorychange`; normal lookups and `a:inventory` also include them.
+* Paper provides complete player inventory slot-change detection. Bukkit and Spigot use a compatibility fallback for commands and creative inventory actions, but direct inventory API calls from another plugin may not be observable there.
 * `r:#worldedit`, `r:#we`, and `inselectedregion:true` limit lookups, rollbacks, and restores to the exact shape of the current WorldEdit selection, including polygonal, ellipsoid, cylinder, and other non-cuboid regions.
 
-Only crafting operations performed after installing this fork are recorded with the new action types. Existing generic item transaction records cannot be retroactively classified as crafting operations.
+Only crafting operations and external inventory changes performed after installing this fork are recorded with the new action types. Existing generic item transaction records cannot be retroactively reclassified.
 
 | Quick Links |  |
 | --- | --- |
@@ -130,6 +133,7 @@ To support the project and obtain a donation key, visit [coreprotect.net/donate]
 * Items taken from or placed into vanilla or supported third-party containers.
 * Hopper, dropper, and dispenser transactions, including container transfers.
 * Player inventory transactions, including items dropped, thrown, shot, or picked up.
+* Optional external player inventory changes made by commands, command blocks, plugins, or the creative inventory.
 * Items broken, created, destroyed, deposited, or withdrawn by players.
 * Items placed on campfires and lectern book transactions.
 * Chiseled bookshelf, decorated pot, and shelf inventory transactions.

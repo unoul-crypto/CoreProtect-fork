@@ -187,8 +187,7 @@ ___
 
 ### `inselectedregion:<true|false>`
 
-*Limit a lookup, rollback, or restore to your current WorldEdit selection.*
-
+*Limit a lookup, near lookup, rollback, or restore to your current WorldEdit selection.*  
 *The default is `false` when the parameter is omitted. A WorldEdit selection takes priority if a numeric radius is also specified.*
 
 * Example: `inselectedregion:true`
@@ -295,8 +294,10 @@ By default, if no radius is specified, a radius of 10 will be applied, restricti
   *(rollback inventory transactions by Notch in the last 5 minutes)*
 * `/co rollback t:15m r:30`  
   *(rollback everything done in the last 15 minutes by anyone within 30 blocks of you)*
-* `/co rollback t:15m r:#worldedit` *(rollback everything done in the last 15 minutes in a WorldEdit selection)*
-* `/co rollback t:15m inselectedregion:true` *(rollback everything done in the last 15 minutes in the current WorldEdit selection)*
+* `/co rollback t:15m r:#worldedit`  
+  *(rollback everything done in the last 15 minutes in a WorldEdit selection)*
+* `/co rollback t:15m inselectedregion:true`  
+  *(rollback everything done in the last 15 minutes in the current WorldEdit selection)*
 
 ---
 
@@ -314,7 +315,9 @@ Lookup commands are generally the same as rollback commands. The primary differe
   *(lookup all logins ever done by Notch)*
 * `/co lookup u:Notch a:login`  
   *(lookup all logins ever done by Notch)*
-* `/co lookup u:Notch a:username` *(lookup previous usernames used by Notch)*
-* `/co lookup t:1h inselectedregion:true` *(lookup activity from the last hour only in the current WorldEdit selection)*
+* `/co lookup u:Notch a:username`  
+  *(lookup previous usernames used by Notch)*
+* `/co lookup t:1h inselectedregion:true`  
+  *(lookup activity from the last hour only in the current WorldEdit selection)*
 
 ___

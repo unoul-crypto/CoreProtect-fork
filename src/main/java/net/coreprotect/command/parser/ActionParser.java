@@ -157,6 +157,21 @@ public class ActionParser {
                         result.add(LookupActions.ITEM);
                         result.add(LookupActions.USED_TO_CRAFT);
                     }
+                    else if (argument.equals("inventorychange") || argument.equals("inventory-change") || argument.equals("externalinventory") || argument.equals("external-inventory")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.EXTERNAL_INVENTORY);
+                    }
+                    else if (argument.equals("+inventorychange") || argument.equals("inventorychange+") || argument.equals("+externalinventory") || argument.equals("externalinventory+")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.EXTERNAL_INVENTORY_ADD);
+                    }
+                    else if (argument.equals("-inventorychange") || argument.equals("inventorychange-") || argument.equals("-externalinventory") || argument.equals("externalinventory-")) {
+                        result.add(LookupActions.CONTAINER);
+                        result.add(LookupActions.ITEM);
+                        result.add(LookupActions.EXTERNAL_INVENTORY_REMOVE);
+                    }
                     else if (argument.equals("-inv") || argument.equals("inv-") || argument.equals("-inventory") || argument.equals("inventory-") || argument.equals("-inventories")) {
                         result.add(LookupActions.CONTAINER);
                         result.add(LookupActions.ITEM);
