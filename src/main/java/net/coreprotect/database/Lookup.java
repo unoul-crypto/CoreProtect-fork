@@ -5,6 +5,8 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +24,8 @@ import net.coreprotect.model.action.LookupActions;
 import net.coreprotect.model.lookup.LookupRollbackState;
 import net.coreprotect.model.lookup.LookupSummaryPage;
 import net.coreprotect.model.lookup.LookupSummaryRow;
+import net.coreprotect.model.item.ItemTransactionActions;
+import net.coreprotect.model.selection.SelectionRegistry;
 import net.coreprotect.utility.ErrorReporter;
 
 public class Lookup extends Queue {
@@ -47,6 +51,11 @@ public class Lookup extends Queue {
     }
 
     public static long countLookupRows(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, EntityActionFilter entityActionFilter, List<String> messageFilters, Set<UUID> loadedEntityUuids, Set<UUID> loadedEntityCandidates, Location location, Integer[] radius, Long[] rowData, long startTime, long endTime, boolean restrictWorld, boolean lookup, Integer entityContainerId, LookupRollbackState rollbackState) {
+        if (SelectionRegistry.hasExactSelection(radius)) {
+            List<Object[]> exactRows = LookupRaw.performLookupRaw(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, messageFilters, loadedEntityUuids, loadedEntityCandidates, location, radius, null, startTime, endTime, -1, -1, restrictWorld, lookup, entityContainerId, rollbackState);
+            return exactRows == null ? 0L : exactRows.size();
+        }
+
         Long rows = 0L;
         boolean paused = false;
 
@@ -88,6 +97,9 @@ public class Lookup extends Queue {
         if (!hasSummaryActions(actionList)) {
             return 0L;
         }
+        if (SelectionRegistry.hasExactSelection(radius)) {
+            return exactSummaryRows(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, loadedEntityUuids, loadedEntityCandidates, location, radius, startTime, endTime, restrictWorld, entityContainerId, rollbackState).size();
+        }
 
         boolean paused = false;
         try {
@@ -118,6 +130,9 @@ public class Lookup extends Queue {
     public static List<LookupSummaryRow> performSummaryLookup(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, EntityActionFilter entityActionFilter, Set<UUID> loadedEntityUuids, Set<UUID> loadedEntityCandidates, Location location, Integer[] radius, long startTime, long endTime, int limitOffset, int limitCount, boolean restrictWorld, Integer entityContainerId, LookupRollbackState rollbackState) {
         if (!hasSummaryActions(actionList)) {
             return Collections.emptyList();
+        }
+        if (SelectionRegistry.hasExactSelection(radius)) {
+            return page(exactSummaryRows(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, loadedEntityUuids, loadedEntityCandidates, location, radius, startTime, endTime, restrictWorld, entityContainerId, rollbackState), limitOffset, limitCount);
         }
 
         List<LookupSummaryRow> rows = new ArrayList<>();
@@ -152,6 +167,10 @@ public class Lookup extends Queue {
     public static LookupSummaryPage performSummaryLookupPage(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, EntityActionFilter entityActionFilter, Set<UUID> loadedEntityUuids, Set<UUID> loadedEntityCandidates, Location location, Integer[] radius, long startTime, long endTime, int limitOffset, int limitCount, boolean restrictWorld, Integer entityContainerId, LookupRollbackState rollbackState) {
         if (!hasSummaryActions(actionList)) {
             return new LookupSummaryPage(0L, Collections.emptyList());
+        }
+        if (SelectionRegistry.hasExactSelection(radius)) {
+            List<LookupSummaryRow> exactRows = exactSummaryRows(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, loadedEntityUuids, loadedEntityCandidates, location, radius, startTime, endTime, restrictWorld, entityContainerId, rollbackState);
+            return new LookupSummaryPage(exactRows.size(), page(exactRows, limitOffset, limitCount));
         }
 
         List<LookupSummaryRow> rows = new ArrayList<>();
@@ -225,6 +244,78 @@ public class Lookup extends Queue {
             }
         }
         return actions;
+    }
+
+    private static List<LookupSummaryRow> exactSummaryRows(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, EntityActionFilter entityActionFilter, Set<UUID> loadedEntityUuids, Set<UUID> loadedEntityCandidates, Location location, Integer[] radius, long startTime, long endTime, boolean restrictWorld, Integer entityContainerId, LookupRollbackState rollbackState) {
+        List<Object[]> rawRows = LookupRaw.performLookupRaw(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, summaryActions(actionList), entityActionFilter, Collections.emptyList(), loadedEntityUuids, loadedEntityCandidates, location, radius, null, startTime, endTime, -1, -1, restrictWorld, true, entityContainerId, rollbackState);
+        if (rawRows == null || rawRows.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        boolean inventoryQuery = LookupActions.isInventoryLookup(actionList);
+        int blockPositiveAction = inventoryQuery ? LookupActions.BLOCK_BREAK : LookupActions.BLOCK_PLACE;
+        int transactionPositiveAction = inventoryQuery ? ItemTransactionActions.REMOVE : ItemTransactionActions.ADD;
+        Map<Long, long[]> grouped = new HashMap<>();
+
+        for (Object[] row : rawRows) {
+            if (row.length < 12) {
+                continue;
+            }
+            int userId = (Integer) row[2];
+            int materialId = (Integer) row[6];
+            int action = (Integer) row[8];
+            int amount = (Integer) row[11];
+            boolean blockContribution = amount == -1 && (action == LookupActions.BLOCK_BREAK || action == LookupActions.BLOCK_PLACE);
+            boolean transactionContribution = amount != -1 && action >= ItemTransactionActions.REMOVE && action <= ItemTransactionActions.USED_TO_CRAFT;
+            if (!blockContribution && !transactionContribution) {
+                continue;
+            }
+
+            long delta;
+            if (amount == -1) {
+                delta = action == blockPositiveAction ? 1L : -1L;
+            }
+            else {
+                boolean positive = action == transactionPositiveAction
+                        || action == ItemTransactionActions.PICKUP
+                        || action == ItemTransactionActions.REMOVE_ENDER
+                        || action == ItemTransactionActions.CREATE
+                        || action == ItemTransactionActions.BUY
+                        || action == ItemTransactionActions.CRAFTED;
+                delta = positive ? amount : -amount;
+            }
+
+            long key = ((long) userId << 32) ^ (materialId & 0xffffffffL);
+            long[] amounts = grouped.computeIfAbsent(key, ignored -> new long[3]);
+            if (delta < 0) {
+                amounts[0] -= delta;
+            }
+            else {
+                amounts[1] += delta;
+            }
+            amounts[2] += delta;
+        }
+
+        List<LookupSummaryRow> rows = new ArrayList<>(grouped.size());
+        for (Map.Entry<Long, long[]> entry : grouped.entrySet()) {
+            int userId = (int) (entry.getKey() >> 32);
+            int materialId = entry.getKey().intValue();
+            long[] amounts = entry.getValue();
+            rows.add(new LookupSummaryRow(userId, materialId, amounts[0], amounts[1], amounts[2]));
+        }
+        rows.sort(Comparator.comparingLong((LookupSummaryRow row) -> Math.abs(row.getAmount())).reversed()
+                .thenComparingInt(LookupSummaryRow::getUserId)
+                .thenComparingInt(LookupSummaryRow::getMaterialId));
+        return rows;
+    }
+
+    private static List<LookupSummaryRow> page(List<LookupSummaryRow> rows, int limitOffset, int limitCount) {
+        if (limitOffset < 0 || limitCount < 0) {
+            return rows;
+        }
+        int fromIndex = Math.min(limitOffset, rows.size());
+        int toIndex = Math.min(fromIndex + limitCount, rows.size());
+        return new ArrayList<>(rows.subList(fromIndex, toIndex));
     }
 
     public static List<String[]> performLookup(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, Location location, Integer[] radius, long startTime, long endTime, boolean restrictWorld, boolean lookup) {

@@ -31,6 +31,7 @@ import net.coreprotect.model.action.SignActions;
 import net.coreprotect.model.item.InventorySources;
 import net.coreprotect.model.item.ItemTransactionActions;
 import net.coreprotect.model.lookup.LookupRollbackState;
+import net.coreprotect.model.selection.SelectionRegistry;
 import net.coreprotect.utility.EntitySpawnTracking;
 import net.coreprotect.utility.EntityUtils;
 import net.coreprotect.utility.ErrorReporter;
@@ -62,6 +63,7 @@ public class LookupRaw extends Queue {
 
     protected static List<Object[]> performLookupRaw(Statement statement, CommandSender user, List<String> checkUuids, List<String> checkUsers, List<Object> restrictList, Map<Object, Boolean> excludeList, List<String> excludeUserList, List<Integer> actionList, EntityActionFilter entityActionFilter, List<String> messageFilters, Set<UUID> loadedEntityUuids, Set<UUID> loadedEntityCandidates, Location location, Integer[] radius, Long[] rowData, long startTime, long endTime, int limitOffset, int limitCount, boolean restrictWorld, boolean lookup, Integer entityContainerId, LookupRollbackState rollbackState) {
         List<Object[]> list = new ArrayList<>();
+        boolean exactSelection = SelectionRegistry.hasExactSelection(radius);
         List<Integer> invalidRollbackActions = new ArrayList<>();
         invalidRollbackActions.add(LookupActions.INTERACTION);
         if (!entityActionFilter.includesAnySpawn(actionList, Config.getGlobal().ROLLBACK_ENTITIES)) {
@@ -84,12 +86,25 @@ public class LookupRaw extends Queue {
             Consumer.isPaused = true;
             paused = true;
 
-            ResultSet results = rawLookupResultSet(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, messageFilters, loadedEntityUuids, loadedEntityCandidates, location, radius, rowData, startTime, endTime, limitOffset, limitCount, restrictWorld, lookup, false, entityContainerId, rollbackState);
+            int queryLimitOffset = exactSelection ? -1 : limitOffset;
+            int queryLimitCount = exactSelection ? -1 : limitCount;
+            ResultSet results = rawLookupResultSet(statement, user, checkUuids, checkUsers, restrictList, excludeList, excludeUserList, actionList, entityActionFilter, messageFilters, loadedEntityUuids, loadedEntityCandidates, location, radius, rowData, startTime, endTime, queryLimitOffset, queryLimitCount, restrictWorld, lookup, false, entityContainerId, rollbackState);
             if (results == null) {
                 return null;
             }
 
+            int matchedRows = 0;
             while (results.next()) {
+                if (exactSelection && !SelectionRegistry.contains(radius, results.getInt("x"), results.getInt("y"), results.getInt("z"))) {
+                    continue;
+                }
+                if (exactSelection && limitOffset > -1 && matchedRows++ < limitOffset) {
+                    continue;
+                }
+                if (exactSelection && limitCount > -1 && list.size() >= limitCount) {
+                    break;
+                }
+
                 if (actionList.contains(LookupActions.CHAT) || actionList.contains(LookupActions.COMMAND)) {
                     long resultId = results.getLong("id");
                     int resultTime = results.getInt("time");
@@ -785,7 +800,7 @@ public class LookupRaw extends Queue {
             else if (actionList.contains(LookupActions.CHAT) || actionList.contains(LookupActions.COMMAND)) {
                 queryTable = "chat";
                 rows = "rowid as id,time," + userColumn + ",message";
-                if (PluginChannelHandshakeListener.getInstance().isPluginChannelPlayer(user)) {
+                if (PluginChannelHandshakeListener.getInstance().isPluginChannelPlayer(user) || SelectionRegistry.hasExactSelection(radius)) {
                     rows += ",wid,x,y,z";
                 }
 

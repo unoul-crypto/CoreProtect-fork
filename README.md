@@ -21,7 +21,7 @@ This fork adds dedicated logging for crafting transactions:
 * `a:craft` shows both the crafted result and the consumed ingredients.
 * `/co lookup` includes crafting transactions by default.
 * The `crafting-transactions` configuration option controls crafting logging and is enabled by default. It requires `item-transactions` to be enabled.
-* `inselectedregion:true` limits lookups, rollbacks, and restores to the current WorldEdit selection.
+* `r:#worldedit`, `r:#we`, and `inselectedregion:true` limit lookups, rollbacks, and restores to the exact shape of the current WorldEdit selection, including polygonal, ellipsoid, cylinder, and other non-cuboid regions.
 
 Only crafting operations performed after installing this fork are recorded with the new action types. Existing generic item transaction records cannot be retroactively classified as crafting operations.
 
