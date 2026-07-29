@@ -27,8 +27,31 @@ This fork adds dedicated logging and selection improvements:
 * A player's saved inventory is treated as the login baseline, so reconnecting does not create external-add records for items the player already owned.
 * Paper provides complete player inventory slot-change detection. Bukkit and Spigot use a compatibility fallback for commands and creative inventory actions, but direct inventory API calls from another plugin may not be observable there.
 * `r:#worldedit`, `r:#we`, and `inselectedregion:true` limit lookups, rollbacks, and restores to the exact shape of the current WorldEdit selection, including polygonal, ellipsoid, cylinder, and other non-cuboid regions.
+* The optional `logical-query-mode` setting enables `and`, `or`, `not`, and nested parentheses in lookup, rollback, restore, and purge filters.
+* Logical lookups query every matching log category instead of applying CoreProtect's normal implicit action selection.
 
 Only crafting operations and external inventory changes performed after installing this fork are recorded with the new action types. Existing generic item transaction records cannot be retroactively reclassified.
+
+### Logical query mode
+
+Logical expressions are disabled by default so existing CoreProtect command behavior remains unchanged. Enable them in `config.yml`:
+
+```yaml
+logical-query-mode: true
+```
+
+Operators are case-insensitive. Their precedence is `not`, then `and`, then `or`; parentheses can be nested to override that order. Adjacent parameters still imply `and`, so existing flat filters remain valid in this mode.
+
+```text
+/co lookup time:2h and not (user:player1 or user:player2)
+/co lookup time:1d and (action:craft or action:container)
+/co rollback time:2h and user:player1 and not include:diamond_block
+/co purge time:90d and (user:player1 or user:player2)
+```
+
+In logical mode, a lookup without `action:` searches all matching categories: blocks, items, containers, entity interactions, chat, commands, sessions, signs, and username history. Normal CoreProtect permissions still determine which categories the command sender may see.
+
+Rollback and restore evaluate the same expression but only modify record types CoreProtect can physically reverse; matching chat, command, session, sign, and username records are left unchanged. Purge removes matching records from all supported log tables and retains CoreProtect's minimum-age safety check. Lookup, rollback, restore, and purge require a time or bounded-location term where applicable to avoid accidental unbounded database scans.
 
 | Quick Links |  |
 | --- | --- |

@@ -19,6 +19,10 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
 
 import net.coreprotect.bukkit.BukkitAdapter;
+import net.coreprotect.command.logical.LogicalQuery;
+import net.coreprotect.command.logical.LogicalQueryRegistry;
+import net.coreprotect.command.logical.LogicalQuerySql;
+import net.coreprotect.command.logical.LogicalTable;
 import net.coreprotect.config.Config;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.consumer.Consumer;
@@ -367,6 +371,8 @@ public class LookupRaw extends Queue {
             String entityInteractionLocationQuery = "";
             String standardLocationQuery = "";
             List<String> messageFilterBindings = new ArrayList<>();
+            LogicalQuery logicalQuery = LogicalQueryRegistry.getActive();
+            LogicalQuerySql logicalCompiler = Config.getGlobal().LOGICAL_QUERY_MODE && logicalQuery != null ? new LogicalQuerySql(logicalQuery, statement.getConnection(), location, LogicalQueryRegistry.getActiveSelection()) : null;
 
             if (checkUuids.size() > 0) {
                 String list = "";
@@ -934,7 +940,7 @@ public class LookupRaw extends Queue {
                     baseQuery = baseQuery.replace("action NOT IN(-1)", "action NOT IN(" + LookupActions.ENTITY_KILL + "," + LookupActions.ENTITY_SPAWN + ")"); // if block specified for include/exclude, filter out entity data
                 }
 
-                query = unionSelect + "SELECT " + "'0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "block " + index + "WHERE" + baseQuery + unionLimit + ") UNION ALL ";
+                query = unionSelect + "SELECT " + "'0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "block " + index + "WHERE" + withLogicalQuery(baseQuery, logicalCompiler, LogicalTable.BLOCK) + unionLimit + ") UNION ALL ";
                 itemLookup = true;
             }
 
@@ -942,12 +948,12 @@ public class LookupRaw extends Queue {
                 if (!count) {
                     rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,metadata,data,amount,action,rolled_back,0 as entity_spawn_rowid";
                 }
-                query = query + unionSelect + "SELECT " + "'1' as tbl," + rows + " FROM " + ConfigHandler.prefix + "container WHERE" + queryNonBlock + unionLimit + ") UNION ALL ";
+                query = query + unionSelect + "SELECT " + "'1' as tbl," + rows + " FROM " + ConfigHandler.prefix + "container WHERE" + withLogicalQuery(queryNonBlock, logicalCompiler, LogicalTable.CONTAINER) + unionLimit + ") UNION ALL ";
 
                 if (!count) {
                     rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,metadata,data,amount,action,rolled_back,entity_spawn_rowid";
                 }
-                query = query + unionSelect + "SELECT '" + InventorySources.ENTITY_CONTAINER + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_container WHERE" + queryEntityContainer + unionLimit + ") UNION ALL ";
+                query = query + unionSelect + "SELECT '" + InventorySources.ENTITY_CONTAINER + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_container WHERE" + withLogicalQuery(queryEntityContainer, logicalCompiler, LogicalTable.ENTITY_CONTAINER) + unionLimit + ") UNION ALL ";
 
                 if (!count) {
                     rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,data as metadata,0 as data,amount,action,rolled_back,0 as entity_spawn_rowid";
@@ -958,7 +964,7 @@ public class LookupRaw extends Queue {
                     queryNonBlock = queryNonBlock.replace("action NOT IN(-1)", "action NOT IN(" + actionExclude + ")");
                 }
 
-                query = query + unionSelect + "SELECT " + "'2' as tbl," + rows + " FROM " + ConfigHandler.prefix + "item WHERE" + queryNonBlock + unionLimit + ")";
+                query = query + unionSelect + "SELECT " + "'2' as tbl," + rows + " FROM " + ConfigHandler.prefix + "item WHERE" + withLogicalQuery(queryNonBlock, logicalCompiler, LogicalTable.ITEM) + unionLimit + ")";
             }
 
             if (!itemLookup && (actionList.contains(LookupActions.CONTAINER) || actionList.contains(5))) {
@@ -966,7 +972,7 @@ public class LookupRaw extends Queue {
                     rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,metadata,data,amount,action,rolled_back,0 as entity_spawn_rowid";
                 }
                 if (entityContainerId == null) {
-                    query = unionSelect + "SELECT '0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "container WHERE" + queryNonBlock + unionLimit + ")";
+                    query = unionSelect + "SELECT '0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "container WHERE" + withLogicalQuery(queryNonBlock, logicalCompiler, LogicalTable.CONTAINER) + unionLimit + ")";
                 }
                 if (includeEntityContainers) {
                     if (!query.isEmpty()) {
@@ -975,7 +981,7 @@ public class LookupRaw extends Queue {
                     if (!count) {
                         rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,metadata,data,amount,action,rolled_back,entity_spawn_rowid";
                     }
-                    query += unionSelect + "SELECT '" + InventorySources.ENTITY_CONTAINER + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_container WHERE" + queryEntityContainer + unionLimit + ")";
+                    query += unionSelect + "SELECT '" + InventorySources.ENTITY_CONTAINER + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_container WHERE" + withLogicalQuery(queryEntityContainer, logicalCompiler, LogicalTable.ENTITY_CONTAINER) + unionLimit + ")";
                 }
                 if (!count) {
                     queryOrder = " ORDER BY time DESC, tbl DESC, id DESC";
@@ -987,13 +993,13 @@ public class LookupRaw extends Queue {
                     if (!count) {
                         rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,meta as metadata,data,-1 as amount,action,rolled_back,0 as entity_spawn_rowid";
                     }
-                    query = unionSelect + "SELECT '0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "block " + index + "WHERE" + blockSourceQuery + unionLimit + ")";
+                    query = unionSelect + "SELECT '0' as tbl," + rows + " FROM " + ConfigHandler.prefix + "block " + index + "WHERE" + withLogicalQuery(blockSourceQuery, logicalCompiler, LogicalTable.BLOCK) + unionLimit + ")";
                 }
 
                 if (!count) {
                     rows = "rowid as id,time," + userColumn + ",wid,x,y,z,type,metadata,action as data,-1 as amount," + LookupActions.INTERACTION + " as action,rolled_back,entity_spawn_rowid";
                 }
-                query += " UNION ALL " + unionSelect + "SELECT '" + InventorySources.ENTITY_INTERACTION + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_interaction WHERE" + queryEntityInteraction + unionLimit + ")";
+                query += " UNION ALL " + unionSelect + "SELECT '" + InventorySources.ENTITY_INTERACTION + "' as tbl," + rows + " FROM " + ConfigHandler.prefix + "entity_interaction WHERE" + withLogicalQuery(queryEntityInteraction, logicalCompiler, LogicalTable.ENTITY_INTERACTION) + unionLimit + ")";
                 if (!count) {
                     queryOrder = " ORDER BY time DESC, tbl DESC, id DESC";
                 }
@@ -1004,7 +1010,8 @@ public class LookupRaw extends Queue {
                     baseQuery = baseQuery.replace("action NOT IN(-1)", "action NOT IN(" + actionExclude + ")");
                 }
 
-                query = "SELECT " + "'0' as tbl," + rows + " FROM " + ConfigHandler.prefix + queryTable + " " + index + "WHERE" + baseQuery;
+                LogicalTable logicalTable = logicalTable(queryTable);
+                query = "SELECT " + "'0' as tbl," + rows + " FROM " + ConfigHandler.prefix + queryTable + " " + index + "WHERE" + withLogicalQuery(baseQuery, logicalCompiler, logicalTable);
             }
 
             if (summary) {
@@ -1031,6 +1038,22 @@ public class LookupRaw extends Queue {
             return rollbackState == LookupRollbackState.ROLLED_BACK ? "rolled_back IN(2,3)" : "rolled_back IN(0,1)";
         }
         return rollbackState == LookupRollbackState.ROLLED_BACK ? "rolled_back IN(1,3)" : "rolled_back IN(0,2)";
+    }
+
+    private static String withLogicalQuery(String predicate, LogicalQuerySql compiler, LogicalTable table) {
+        if (compiler == null || table == null) {
+            return predicate;
+        }
+        return " (" + predicate + ") AND (" + compiler.compile(table) + ")";
+    }
+
+    private static LogicalTable logicalTable(String table) {
+        for (LogicalTable value : LogicalTable.values()) {
+            if (value.getTableName().equals(table)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private static String buildActionPredicate(String actions, List<Integer> actionList, EntityActionFilter entityActionFilter) {

@@ -19,10 +19,13 @@ import org.bukkit.entity.Player;
 import net.coreprotect.command.lookup.BlockLookupThread;
 import net.coreprotect.command.lookup.ChestTransactionLookupThread;
 import net.coreprotect.command.lookup.EntityInteractionLookupThread;
+import net.coreprotect.command.lookup.LogicalLookupThread;
 import net.coreprotect.command.lookup.StandardLookupThread;
 import net.coreprotect.command.parser.ActionParser;
 import net.coreprotect.command.parser.MessageFilterParser;
 import net.coreprotect.command.parser.RollbackStateParser;
+import net.coreprotect.command.logical.LogicalQuery;
+import net.coreprotect.command.logical.LogicalQueryRegistry;
 import net.coreprotect.config.Config;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.language.Phrase;
@@ -39,6 +42,10 @@ import net.coreprotect.utility.ErrorReporter;
 
 public class LookupCommand {
     public static void runCommand(CommandSender player, Command command, boolean permission, String[] args) {
+        if (Config.getGlobal().LOGICAL_QUERY_MODE && runLogicalLookup(player, command, permission, args)) {
+            return;
+        }
+
         int resultc = args.length;
         MessageFilterParser.ParseResult messageFilterResult = CommandParser.parseMessageFilters(args);
         args = messageFilterResult.getArguments();
@@ -681,6 +688,87 @@ public class LookupCommand {
 
     public static boolean hasLookupScope(boolean pageLookup, int blockCount, int userCount, Integer[] radius, boolean forceglobal) {
         return pageLookup || blockCount > 0 || userCount > 0 || radius != null || forceglobal;
+    }
+
+    private static boolean runLogicalLookup(CommandSender player, Command command, boolean permission, String[] args) {
+        if (!permission) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.NO_PERMISSION));
+            return true;
+        }
+
+        try {
+            boolean pageLookup = isLogicalPageLookup(args);
+            LogicalQuery query;
+            Location origin;
+            Integer[] worldEditSelection = null;
+            int page = 1;
+            if (pageLookup) {
+                query = LogicalQueryRegistry.get(player.getName());
+                origin = LogicalQueryRegistry.getOrigin(player.getName());
+                worldEditSelection = LogicalQueryRegistry.getSelection(player.getName());
+                if (query == null) {
+                    return false;
+                }
+                if (args.length > 1) {
+                    String pageText = args[1].replaceAll("[^0-9]", "");
+                    if (!pageText.isEmpty()) {
+                        page = Math.max(1, Integer.parseInt(pageText));
+                    }
+                }
+            }
+            else {
+                query = LogicalQuery.parse(args);
+                origin = CommandParser.parseLocation(player, args);
+                if (query.hasTermValue("r", "#worldedit", "#we") || query.hasTermValue("radius", "#worldedit", "#we") || query.hasTermValue("inselectedregion", "true")) {
+                    worldEditSelection = WorldEditHandler.runWorldEditCommand(player);
+                    if (worldEditSelection == null) {
+                        Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.INVALID_SELECTION, "WorldEdit"));
+                        return true;
+                    }
+                }
+                boolean nearLookup = args.length > 0 && args[0].equalsIgnoreCase("near");
+                boolean bounded = query.hasTermPrefix("t", "time", "r", "radius", "world", "w");
+                if (!nearLookup && !bounded) {
+                    Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_LOOKUP_TIME, Selector.FIRST));
+                    return true;
+                }
+            }
+
+            int rows = CommandParser.parseRows(args);
+            if (rows <= 0) {
+                rows = 7;
+            }
+            if (rows > 1000) {
+                rows = 1000;
+            }
+            if (rows > 100 && !(player instanceof ConsoleCommandSender)) {
+                rows = 100;
+            }
+
+            boolean countOnly = CommandParser.parseCount(args);
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Color.ITALIC + Phrase.build(Phrase.LOOKUP_SEARCHING));
+            Thread thread = new Thread(new LogicalLookupThread(player, command, query, origin, worldEditSelection, page, rows, countOnly));
+            thread.start();
+            return true;
+        }
+        catch (IllegalArgumentException e) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + e.getMessage());
+            return true;
+        }
+    }
+
+    public static boolean isLogicalPageLookup(String[] args) {
+        if (args.length == 0) {
+            return false;
+        }
+        if (args[0].equalsIgnoreCase("page")) {
+            return true;
+        }
+        if (args.length != 2 || (!args[0].equalsIgnoreCase("lookup") && !args[0].equalsIgnoreCase("l"))) {
+            return false;
+        }
+
+        return args[1].matches("(?i)(?:page:)?[0-9]+");
     }
 
 }

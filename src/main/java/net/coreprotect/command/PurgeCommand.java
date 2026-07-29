@@ -25,6 +25,10 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import net.coreprotect.bukkit.BukkitAdapter;
+import net.coreprotect.command.logical.LogicalQuery;
+import net.coreprotect.command.logical.LogicalQuerySql;
+import net.coreprotect.command.logical.LogicalTable;
+import net.coreprotect.config.Config;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.consumer.Consumer;
 import net.coreprotect.database.Database;
@@ -149,6 +153,11 @@ public class PurgeCommand extends Consumer {
     }
 
     protected static void runCommand(final CommandSender player, boolean permission, String[] args) {
+        if (Config.getGlobal().LOGICAL_QUERY_MODE) {
+            runLogicalPurge(player, permission, args);
+            return;
+        }
+
         int resultc = args.length;
         Location location = CommandParser.parseLocation(player, args);
         final Integer[] argRadius = CommandParser.parseRadius(args, player, location);
@@ -858,6 +867,124 @@ public class PurgeCommand extends Consumer {
 
         Runnable runnable = new BasicThread();
         Thread thread = new Thread(runnable);
+        thread.start();
+    }
+
+    private static void runLogicalPurge(final CommandSender player, boolean permission, String[] args) {
+        if (!permission) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.NO_PERMISSION));
+            return;
+        }
+        if (ConfigHandler.converterRunning || ConfigHandler.migrationRunning || ConfigHandler.purgeRunning) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(ConfigHandler.purgeRunning ? Phrase.PURGE_IN_PROGRESS : Phrase.UPGRADE_IN_PROGRESS));
+            return;
+        }
+
+        final LogicalQuery logicalQuery;
+        try {
+            logicalQuery = LogicalQuery.parse(args);
+        }
+        catch (IllegalArgumentException e) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + e.getMessage());
+            return;
+        }
+        if (!logicalQuery.hasTermPrefix("t", "time")) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_PARAMETERS, "/co purge t:<time>"));
+            return;
+        }
+
+        long[] parsedTime = CommandParser.parseTime(args);
+        long minimumAge = parsedTime[1] > 0 ? parsedTime[1] : parsedTime[0];
+        if (player instanceof Player && minimumAge < 2592000) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.PURGE_MINIMUM_TIME, "30", Selector.FIRST));
+            return;
+        }
+        if (minimumAge < 86400) {
+            Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.PURGE_MINIMUM_TIME, "24", Selector.SECOND));
+            return;
+        }
+
+        final Location origin = CommandParser.parseLocation(player, args);
+        Thread thread = new Thread(() -> {
+            boolean claimed = false;
+            boolean paused = false;
+            Connection connection = null;
+            try {
+                Consumer.OperationStartResult start = Consumer.claimPurge();
+                if (start != Consumer.OperationStartResult.STARTED) {
+                    Chat.sendGlobalMessage(player, Phrase.build(Phrase.PURGE_IN_PROGRESS));
+                    return;
+                }
+                claimed = true;
+                activePurgeThread = Thread.currentThread();
+                while (!Consumer.pausedSuccess && !Consumer.isPersistenceHalted()) {
+                    Thread.sleep(1);
+                }
+                if (Consumer.isPersistenceHalted()) {
+                    throw new IllegalStateException("Database persistence is halted");
+                }
+                Consumer.isPaused = true;
+                paused = true;
+
+                connection = Database.getConnection(false, 1000);
+                if (connection == null) {
+                    Chat.sendGlobalMessage(player, Phrase.build(Phrase.DATABASE_BUSY));
+                    return;
+                }
+                boolean transaction = !ConfigHandler.databaseType.isClickHouse();
+                if (transaction) {
+                    connection.setAutoCommit(false);
+                }
+
+                LogicalQuerySql compiler = new LogicalQuerySql(logicalQuery, connection, origin);
+                long removed = 0;
+                try (Statement statement = connection.createStatement()) {
+                    activePurgeStatement = statement;
+                    for (LogicalTable table : LogicalTable.values()) {
+                        requirePurgeNotCancelled();
+                        String sql = "DELETE FROM " + ConfigHandler.prefix + table.getTableName() + " WHERE " + compiler.compile(table);
+                        removed += statement.executeUpdate(sql);
+                    }
+                    if (transaction) {
+                        connection.commit();
+                    }
+                }
+                catch (Exception e) {
+                    if (transaction) {
+                        connection.rollback();
+                    }
+                    throw e;
+                }
+
+                EntitySpawnTracking.invalidateDatabaseVerification();
+                Chat.sendGlobalMessage(player, Phrase.build(Phrase.PURGE_SUCCESS));
+                Chat.sendGlobalMessage(player, Phrase.build(Phrase.PURGE_ROWS, NumberFormat.getInstance().format(removed), removed == 1 ? Selector.FIRST : Selector.SECOND));
+            }
+            catch (Exception e) {
+                ErrorReporter.report(e);
+                Chat.sendGlobalMessage(player, Phrase.build(Phrase.PURGE_FAILED));
+            }
+            finally {
+                if (connection != null) {
+                    try {
+                        connection.close();
+                    }
+                    catch (Exception e) {
+                        ErrorReporter.report(e);
+                    }
+                }
+                if (paused && !Consumer.isPersistenceHalted()) {
+                    Consumer.isPaused = false;
+                }
+                if (claimed) {
+                    Consumer.releasePurge();
+                }
+                if (activePurgeThread == Thread.currentThread()) {
+                    activePurgeStatement = null;
+                    activePurgeThread = null;
+                }
+            }
+        });
         thread.start();
     }
 

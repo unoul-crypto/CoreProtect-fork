@@ -66,6 +66,7 @@ public class Config extends Language {
     public boolean CHECK_UPDATES;
     public boolean ERROR_REPORTING;
     public boolean API_ENABLED;
+    public boolean LOGICAL_QUERY_MODE;
     public boolean VERBOSE;
     public boolean ROLLBACK_ITEMS;
     public boolean ROLLBACK_ENTITIES;
@@ -136,6 +137,7 @@ public class Config extends Language {
         DEFAULT_VALUES.put("check-updates", "true");
         DEFAULT_VALUES.put("error-reporting", "true");
         DEFAULT_VALUES.put("api-enabled", "true");
+        DEFAULT_VALUES.put("logical-query-mode", "false");
         DEFAULT_VALUES.put("verbose", "true");
         DEFAULT_VALUES.put("default-radius", "10");
         DEFAULT_VALUES.put("max-radius", "100");
@@ -188,6 +190,7 @@ public class Config extends Language {
         HEADERS.put("check-updates", new String[] { "# If enabled, CoreProtect will check for updates when your server starts up.", "# If an update is available, you'll be notified via your server console.", });
         HEADERS.put("error-reporting", new String[] { "# Automatically sends errors to the plugin author." });
         HEADERS.put("api-enabled", new String[] { "# If enabled, other plugins will be able to utilize the CoreProtect API.", });
+        HEADERS.put("logical-query-mode", new String[] { "# Enables boolean query expressions in commands: and, or, not, and parentheses.", "# When enabled, lookups without an action include every matching log category." });
         HEADERS.put("verbose", new String[] { "# If enabled, extra data is displayed during rollbacks and restores.", "# Can be manually triggered by adding \"#verbose\" to your rollback command." });
         HEADERS.put("default-radius", new String[] { "# If no radius is specified in a rollback or restore, this value will be", "# used as the radius. Set to \"0\" to disable automatically adding a radius." });
         HEADERS.put("max-radius", new String[] { "# The maximum radius that can be used in a command. Set to \"0\" to disable.", "# To run a rollback or restore without a radius, you can use \"r:#global\"." });
@@ -267,6 +270,7 @@ public class Config extends Language {
         this.CHECK_UPDATES = this.getBoolean("check-updates");
         this.ERROR_REPORTING = this.getBoolean("error-reporting");
         this.API_ENABLED = this.getBoolean("api-enabled");
+        this.LOGICAL_QUERY_MODE = this.getBoolean("logical-query-mode");
         this.VERBOSE = this.getBoolean("verbose");
         this.DEFAULT_RADIUS = this.getInt("default-radius");
         this.MAX_RADIUS = this.getInt("max-radius");

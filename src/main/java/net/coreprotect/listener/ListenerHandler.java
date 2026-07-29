@@ -186,7 +186,7 @@ public final class ListenerHandler {
             pluginManager.registerEvents(new PaperInventorySlotChangeListener(), plugin);
         }
         catch (Exception e) {
-            // Bukkit/Spigot use command and creative inventory snapshot fallbacks.
+            // Bukkit/Spigot use snapshot fallbacks for inventory changes.
         }
 
         // Player Listeners

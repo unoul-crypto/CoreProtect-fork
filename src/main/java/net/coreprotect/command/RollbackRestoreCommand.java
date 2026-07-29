@@ -20,6 +20,8 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 
 import net.coreprotect.command.parser.ActionParser;
+import net.coreprotect.command.logical.LogicalQuery;
+import net.coreprotect.command.logical.LogicalQueryRegistry;
 import net.coreprotect.config.Config;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.consumer.Consumer;
@@ -38,8 +40,25 @@ import net.coreprotect.utility.ErrorReporter;
 
 public class RollbackRestoreCommand {
     public static void runCommand(CommandSender player, Command command, boolean permission, String[] args, Location argLocation, long forceStart, long forceEnd) {
+        LogicalQuery logicalQuery = null;
+        if (Config.getGlobal().LOGICAL_QUERY_MODE) {
+            try {
+                logicalQuery = LogicalQuery.parse(args);
+                if (!logicalQuery.hasTermPrefix("t", "time")) {
+                    Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_LOOKUP_TIME, Selector.SECOND));
+                    return;
+                }
+            }
+            catch (IllegalArgumentException e) {
+                Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + e.getMessage());
+                return;
+            }
+        }
+        final boolean logicalMode = logicalQuery != null;
+        final LogicalQuery finalLogicalQuery = logicalQuery;
+
         String lookupOnlyFlag = findLookupOnlyFlag(args);
-        if (lookupOnlyFlag != null) {
+        if (!logicalMode && lookupOnlyFlag != null) {
             Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.INVALID_PARAMETER, lookupOnlyFlag));
             return;
         }
@@ -64,9 +83,38 @@ public class RollbackRestoreCommand {
         boolean forceglobal = CommandParser.parseForceGlobal(args);
         int preview = CommandParser.parsePreview(args);
         String corecommand = args[0].toLowerCase(Locale.ROOT);
+        Integer[] logicalWorldEditSelection = logicalMode && (finalLogicalQuery.hasTermValue("r", "#worldedit", "#we") || finalLogicalQuery.hasTermValue("radius", "#worldedit", "#we") || finalLogicalQuery.hasTermValue("inselectedregion", "true")) ? argRadius : null;
+        final Integer[] finalLogicalWorldEditSelection = logicalWorldEditSelection;
 
-        if (argBlocks == null || argExclude == null || argExcludeUsers == null) {
+        if (!logicalMode && (argBlocks == null || argExclude == null || argExcludeUsers == null)) {
             return;
+        }
+
+        if (logicalMode) {
+            if (argBlocks == null) {
+                argBlocks = new ArrayList<>();
+            }
+            if (argExclude == null) {
+                argExclude = new java.util.HashMap<>();
+            }
+            if (argExcludeUsers == null) {
+                argExcludeUsers = new ArrayList<>();
+            }
+            LogicalQueryRegistry.put(player.getName(), logicalQuery);
+            LogicalQueryRegistry.putOrigin(player.getName(), lo);
+            LogicalQueryRegistry.putSelection(player.getName(), logicalWorldEditSelection);
+            argUsers.clear();
+            argUsers.add("#global");
+            argAction.clear();
+            argBlocks.clear();
+            argExclude.clear();
+            argExcludeUsers.clear();
+            startTime = 1;
+            endTime = 0;
+            argWid = 0;
+            forceglobal = true;
+            worldedit = logicalWorldEditSelection != null;
+            argRadius = logicalWorldEditSelection;
         }
 
         /* check for invalid block/entity combinations (include) */
@@ -165,7 +213,7 @@ public class RollbackRestoreCommand {
 
             int DEFAULT_RADIUS = Config.getGlobal().DEFAULT_RADIUS;
             boolean exactEntityContainer = argUsers.contains("#container") && ConfigHandler.lookupEntityContainer.get(player.getName()) != null;
-            if ((player instanceof Player || player instanceof BlockCommandSender) && argRadius == null && DEFAULT_RADIUS > 0 && !forceglobal && !argAction.contains(LookupActions.ITEM) && !argAction.contains(5) && !exactEntityContainer) {
+            if (!logicalMode && (player instanceof Player || player instanceof BlockCommandSender) && argRadius == null && DEFAULT_RADIUS > 0 && !forceglobal && !argAction.contains(LookupActions.ITEM) && !argAction.contains(5) && !exactEntityContainer) {
                 Location location = lo;
                 int xmin = location.getBlockX() - DEFAULT_RADIUS;
                 int xmax = location.getBlockX() + DEFAULT_RADIUS;
@@ -176,13 +224,13 @@ public class RollbackRestoreCommand {
             // if (arg_radius==-2)arg_radius = -1;
 
             int g = 1;
-            if (argUsers.contains("#global")) {
+            if (!logicalMode && argUsers.contains("#global")) {
                 if (argRadius == null) {
                     g = 0;
                 }
             }
 
-            if (argUsers.size() == 0 && (argWid > 0 || forceglobal) && argRadius == null) {
+            if (!logicalMode && argUsers.size() == 0 && (argWid > 0 || forceglobal) && argRadius == null) {
                 if (finalAction == 0) {
                     Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.MISSING_ROLLBACK_USER, Selector.FIRST));
                 }
@@ -207,7 +255,7 @@ public class RollbackRestoreCommand {
                 argExclude.put(Material.TNT, true);
             }
 
-            if (g == 1 && (argUsers.size() > 0 || (argUsers.size() == 0 && argRadius != null))) {
+            if ((logicalMode || g == 1) && (logicalMode || argUsers.size() > 0 || (argUsers.size() == 0 && argRadius != null))) {
                 Integer MAX_RADIUS = Config.getGlobal().MAX_RADIUS;
                 if (argRadius != null) {
                     int radiusValue = argRadius[0];
@@ -331,8 +379,8 @@ public class RollbackRestoreCommand {
                 final List<String> rollbackusers2 = rollbackusers;
                 if (startTime > 0) {
                     long unixtimestamp = (System.currentTimeMillis() / 1000L);
-                    long timeStart = unixtimestamp - startTime;
-                    long timeEnd = endTime > 0 ? (unixtimestamp - endTime) : 0;
+                    long timeStart = logicalMode ? 0 : unixtimestamp - startTime;
+                    long timeEnd = logicalMode ? 0 : (endTime > 0 ? (unixtimestamp - endTime) : 0);
                     if (forceStart > 0) {
                         timeStart = forceStart;
                         timeEnd = forceEnd;
@@ -367,6 +415,7 @@ public class RollbackRestoreCommand {
                         class BasicThread2 implements Runnable {
                             @Override
                             public void run() {
+                                LogicalQueryRegistry.activate(finalLogicalQuery, finalLogicalWorldEditSelection);
                                 try (Connection connection = Database.getConnection(false, 1000)) {
                                     ConfigHandler.lookupThrottle.put(player.getName(), new Object[] { true, System.currentTimeMillis() });
                                     int action = finalAction;
@@ -474,6 +523,7 @@ public class RollbackRestoreCommand {
                                     ErrorReporter.report(e);
                                 }
                                 finally {
+                                    LogicalQueryRegistry.deactivate();
                                     Consumer.releaseRollback(player2.getName());
                                     ConfigHandler.lookupThrottle.put(player2.getName(), new Object[] { false, System.currentTimeMillis() });
                                 }

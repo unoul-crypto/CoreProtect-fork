@@ -25,4 +25,20 @@ class ConfigCraftingTest {
 
         assertFalse(config.CRAFTING_TRANSACTIONS);
     }
+
+    @Test
+    void keepsLogicalQueryModeDisabledByDefault() {
+        Config config = new Config();
+        config.loadDefaults();
+
+        assertFalse(config.LOGICAL_QUERY_MODE);
+    }
+
+    @Test
+    void allowsLogicalQueryModeToBeEnabled() throws Exception {
+        Config config = new Config();
+        config.load(new ByteArrayInputStream("logical-query-mode: true".getBytes(StandardCharsets.UTF_8)));
+
+        assertTrue(config.LOGICAL_QUERY_MODE);
+    }
 }

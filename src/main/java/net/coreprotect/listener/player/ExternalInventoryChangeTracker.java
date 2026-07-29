@@ -79,7 +79,7 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
 
     public static void recordSlotChange(Player player, int slot, ItemStack oldItem, ItemStack newItem) {
         UUID uuid = player.getUniqueId();
-        if (!JOINED_PLAYERS.contains(uuid) || !isEnabled(player) || SUPPRESSION_TOKENS.containsKey(uuid)) {
+        if (!JOINED_PLAYERS.contains(uuid) || !isEnabled(player) || SUPPRESSION_TOKENS.containsKey(uuid) || PENDING_SNAPSHOTS.containsKey(uuid)) {
             return;
         }
 
@@ -241,7 +241,7 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onCreativeInventory(InventoryCreativeEvent event) {
-        if (!paperSlotEventsAvailable && event.getWhoClicked() instanceof Player) {
+        if (event.getWhoClicked() instanceof Player) {
             captureSnapshot((Player) event.getWhoClicked());
         }
     }

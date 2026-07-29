@@ -77,6 +77,22 @@ crafting-transactions: false
 
 This setting requires `item-transactions` to be enabled and can be overridden by a [per-world configuration](#per-world-configuration). Existing crafting records remain available for lookup when logging is disabled.
 
+## Logical Query Mode
+
+Boolean query expressions can be enabled with:
+
+```yaml
+logical-query-mode: true
+```
+
+This setting is disabled by default. When enabled, filter-capable commands support the case-insensitive operators `and`, `or`, and `not`, as well as nested parentheses. Operator precedence is `not`, `and`, then `or`.
+
+```text
+/co lookup time:2h and not (user:player1 or user:player2)
+```
+
+Logical lookups include every matching log category permitted for the command sender. Rollback and restore skip matching categories that cannot be physically reversed, while purge removes matching records subject to its normal minimum-age safety requirement.
+
 ## External Inventory Transactions
 
 Otherwise unclassified additions to and removals from player inventories can be logged with:
