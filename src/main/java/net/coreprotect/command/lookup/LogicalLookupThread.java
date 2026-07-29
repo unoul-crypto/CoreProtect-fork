@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.Locale;
 
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+
+import com.google.common.base.Strings;
 
 import net.coreprotect.command.logical.LogicalQuery;
 import net.coreprotect.command.logical.LogicalQueryRegistry;
@@ -24,11 +27,17 @@ import net.coreprotect.language.Phrase;
 import net.coreprotect.language.Selector;
 import net.coreprotect.model.action.LookupActions;
 import net.coreprotect.model.item.ItemTransactionActions;
+import net.coreprotect.model.action.SessionActions;
 import net.coreprotect.model.selection.SelectionRegistry;
 import net.coreprotect.utility.Chat;
 import net.coreprotect.utility.ChatUtils;
 import net.coreprotect.utility.Color;
+import net.coreprotect.utility.DatabaseUtils;
+import net.coreprotect.utility.EntitySpawnTracking;
+import net.coreprotect.utility.EntityUtils;
+import net.coreprotect.utility.ItemUtils;
 import net.coreprotect.utility.MaterialUtils;
+import net.coreprotect.utility.StringUtils;
 import net.coreprotect.utility.WorldUtils;
 import net.coreprotect.utility.ErrorReporter;
 
@@ -204,10 +213,10 @@ public final class LogicalLookupThread implements Runnable {
                 break;
             case CONTAINER:
             case ENTITY_CONTAINER:
-                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,action,type,data,amount,rolled_back";
+                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,action,type,data,amount,metadata,rolled_back";
                 break;
             case ITEM:
-                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,action,type,0 AS data,amount,rolled_back";
+                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,action,type,0 AS data,amount,data AS metadata,rolled_back";
                 break;
             case ENTITY_INTERACTION:
                 columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,action,type,rolled_back";
@@ -223,7 +232,7 @@ public final class LogicalLookupThread implements Runnable {
                 columns = "rowid AS id,time,uuid," + ConfigHandler.databaseType.getUserColumn();
                 break;
             case SIGN:
-                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z";
+                columns = "rowid AS id,time," + ConfigHandler.databaseType.getUserColumn() + ",wid,x,y,z,face,line_1,line_2,line_3,line_4,line_5,line_6,line_7,line_8";
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported logical lookup table");
@@ -248,7 +257,10 @@ public final class LogicalLookupThread implements Runnable {
                     if (table == LogicalTable.CHAT || table == LogicalTable.COMMAND) {
                         row.message = result.getString("message");
                     }
-                    else if (table != LogicalTable.SIGN) {
+                    else if (table == LogicalTable.SIGN) {
+                        row.message = signMessage(result);
+                    }
+                    else {
                         row.action = result.getInt("action");
                     }
                     if (table.hasMaterialType() || table == LogicalTable.ENTITY_INTERACTION) {
@@ -259,6 +271,7 @@ public final class LogicalLookupThread implements Runnable {
                     }
                     if (table == LogicalTable.CONTAINER || table == LogicalTable.ENTITY_CONTAINER || table == LogicalTable.ITEM) {
                         row.amount = result.getInt("amount");
+                        row.metadata = DatabaseUtils.getBytes(result, "metadata");
                     }
                     if (table == LogicalTable.BLOCK || table == LogicalTable.CONTAINER || table == LogicalTable.ENTITY_CONTAINER
                             || table == LogicalTable.ITEM || table == LogicalTable.ENTITY_INTERACTION) {
@@ -281,18 +294,212 @@ public final class LogicalLookupThread implements Runnable {
         }
 
         String time = ChatUtils.getTimeSince((int) row.time, now, true);
-        String rollbackFormat = isRolledBack(row) ? Color.STRIKETHROUGH : "";
-        String description = rollbackFormat + describe(connection, row)
-                .replace(Color.GREY, Color.GREY + rollbackFormat)
-                .replace(Color.DARK_AQUA, Color.DARK_AQUA + rollbackFormat)
-                .replace(Color.WHITE, Color.WHITE + rollbackFormat);
-        String coordinates = "";
-        if (row.table.hasCoordinates()) {
-            coordinates = " " + Color.GREY + ChatUtils.getCoordinates(command.getName(), row.worldId, row.x, row.y, row.z, true, true);
+        switch (row.table) {
+            case CHAT:
+            case COMMAND:
+                Chat.sendComponent(sender, time + " " + Color.WHITE + "- " + Color.DARK_AQUA + userName + ": " + Color.WHITE, row.message);
+                return;
+            case USERNAME:
+                String currentName = UserStatement.getNameByUuid(row.uuid);
+                if (currentName == null || currentName.isEmpty()) {
+                    currentName = row.userName;
+                }
+                Chat.sendComponent(sender, time + " " + Color.WHITE + "- "
+                        + Phrase.build(Phrase.LOOKUP_USERNAME, Color.DARK_AQUA + currentName + Color.WHITE, Color.DARK_AQUA + row.userName + Color.WHITE));
+                return;
+            case SIGN:
+                Chat.sendComponent(sender, time + " " + Color.WHITE + "- " + Color.DARK_AQUA + userName + ": " + Color.WHITE, row.message);
+                outputCoordinates(row, now, null);
+                return;
+            case SESSION:
+                boolean login = row.action != SessionActions.LOGOUT;
+                String sessionTag = login ? Color.GREEN + "+" : Color.RED + "-";
+                Chat.sendComponent(sender, time + " " + sessionTag + " " + Color.DARK_AQUA
+                        + Phrase.build(Phrase.LOOKUP_LOGIN, Color.DARK_AQUA + userName + Color.WHITE, login ? Selector.FIRST : Selector.SECOND));
+                outputCoordinates(row, now, null);
+                return;
+            default:
+                outputAction(connection, row, now, userName, time);
         }
-        String action = " " + Color.GREY + Color.ITALIC + "(" + actionLabel(row.table, row.action) + ")";
-        Chat.sendComponent(sender, time + " " + Color.DARK_AQUA + rollbackFormat + userName + Color.WHITE + rollbackFormat + " "
-                + description + Color.RESET + coordinates + action);
+    }
+
+    private void outputAction(Connection connection, Row row, int now, String userName, String time) {
+        String rollbackFormat = isRolledBack(row) ? Color.STRIKETHROUGH : "";
+        String tag = Color.WHITE + "-";
+        Phrase phrase;
+        String selector;
+        String target;
+        String action = actionLabel(row.table, row.action);
+
+        if (row.table == LogicalTable.CONTAINER || row.table == LogicalTable.ENTITY_CONTAINER || row.table == LogicalTable.ITEM) {
+            InventoryFormat format = inventoryFormat(row.table, row.action);
+            phrase = format.phrase;
+            selector = format.selector;
+            tag = format.tag;
+            action = format.action;
+
+            String itemName = itemName(row);
+            String tooltip = ItemUtils.getEnchantments(row.metadata, row.type, row.amount);
+            Integer itemId = ItemUtils.makeGivableItem(ItemUtils.getItemStack(row.metadata, row.type, row.amount));
+            target = ChatUtils.createTooltip(Color.DARK_AQUA + rollbackFormat + itemName, tooltip)
+                    + ChatUtils.filterComponent(sender.hasPermission("coreprotect.give"),
+                            ChatUtils.createGiveItemComponent(Color.GREY + "(↓)", command.getName(), itemId))
+                    + Color.WHITE;
+
+            Chat.sendComponent(sender, time + " " + tag + " "
+                    + Phrase.build(phrase, Color.DARK_AQUA + rollbackFormat + userName + Color.WHITE + rollbackFormat,
+                            "x" + row.amount, target, selector));
+        }
+        else {
+            if (row.table == LogicalTable.ENTITY_INTERACTION) {
+                phrase = Phrase.LOOKUP_ENTITY_INTERACTION;
+                selector = EntityInteractionLookup.actionSelector(row.action);
+                target = entityName(row.type);
+            }
+            else if (row.action == LookupActions.ENTITY_SPAWN) {
+                boolean placedEntity = EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(row.type));
+                phrase = placedEntity ? Phrase.LOOKUP_BLOCK : Phrase.LOOKUP_ENTITY_SPAWN;
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                action = placedEntity ? "a:block" : "a:spawn";
+                target = entityName(row.type);
+            }
+            else if (row.action == LookupActions.INTERACTION || row.action == LookupActions.ENTITY_KILL) {
+                boolean placedEntity = row.action == LookupActions.ENTITY_KILL && row.type != 0
+                        && EntitySpawnTracking.isPlacedEntityType(EntityUtils.getEntityType(row.type));
+                if (placedEntity) {
+                    phrase = Phrase.LOOKUP_BLOCK;
+                    selector = Selector.SECOND;
+                    tag = Color.RED + "-";
+                    action = "a:block";
+                }
+                else {
+                    phrase = Phrase.LOOKUP_INTERACTION;
+                    selector = row.action == LookupActions.INTERACTION ? Selector.FIRST : Selector.SECOND;
+                    tag = row.action == LookupActions.INTERACTION ? Color.WHITE + "-" : Color.RED + "-";
+                }
+                target = row.action == LookupActions.ENTITY_KILL && row.type == 0
+                        ? playerName(connection, row.data)
+                        : (row.action == LookupActions.INTERACTION ? materialName(row) : entityName(row.type));
+            }
+            else {
+                phrase = Phrase.LOOKUP_BLOCK;
+                selector = row.action == LookupActions.BLOCK_BREAK ? Selector.SECOND : Selector.FIRST;
+                tag = row.action == LookupActions.BLOCK_BREAK ? Color.RED + "-" : Color.GREEN + "+";
+                target = materialName(row);
+            }
+
+            Chat.sendComponent(sender, time + " " + tag + " "
+                    + Phrase.build(phrase, Color.DARK_AQUA + rollbackFormat + userName + Color.WHITE + rollbackFormat,
+                            Color.DARK_AQUA + rollbackFormat + target + Color.WHITE, selector));
+        }
+
+        outputCoordinates(row, now, action);
+    }
+
+    private void outputCoordinates(Row row, int now, String action) {
+        String suffix = action == null ? "" : " (" + action + ")";
+        String coordinates = ChatUtils.getCoordinates(command.getName(), row.worldId, row.x, row.y, row.z, true, true);
+        Chat.sendComponent(sender, Color.WHITE + leftPadding(row, now) + Color.GREY + "^ " + coordinates + Color.GREY + Color.ITALIC + suffix);
+    }
+
+    private static String leftPadding(Row row, int now) {
+        int timeLength = 50 + (ChatUtils.getTimeSince(row.time, now, false).replaceAll("[^0-9]", "").length() * 6);
+        String padding = Color.BOLD + Strings.padStart("", 10, ' ');
+        if (timeLength % 4 == 0) {
+            return Strings.padStart("", timeLength / 4, ' ');
+        }
+        return padding + Color.WHITE + Strings.padStart("", (timeLength - 50) / 4, ' ');
+    }
+
+    private static String playerName(Connection connection, int userId) {
+        String name = UserStatement.getName(connection, userId);
+        return name == null || name.isEmpty() ? "unknown" : name;
+    }
+
+    private static InventoryFormat inventoryFormat(LogicalTable table, int rowAction) {
+        Phrase phrase = Phrase.LOOKUP_CONTAINER;
+        String selector;
+        String tag;
+        String action = table == LogicalTable.ITEM ? "a:item" : "a:container";
+
+        switch (rowAction) {
+            case ItemTransactionActions.DROP:
+                phrase = Phrase.LOOKUP_ITEM;
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.PICKUP:
+                phrase = Phrase.LOOKUP_ITEM;
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                break;
+            case ItemTransactionActions.REMOVE_ENDER:
+                phrase = Phrase.LOOKUP_STORAGE;
+                selector = Selector.SECOND;
+                tag = Color.GREEN + "+";
+                break;
+            case ItemTransactionActions.ADD_ENDER:
+                phrase = Phrase.LOOKUP_STORAGE;
+                selector = Selector.FIRST;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.THROW:
+                phrase = Phrase.LOOKUP_PROJECTILE;
+                selector = Selector.FIRST;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.SHOOT:
+                phrase = Phrase.LOOKUP_PROJECTILE;
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.CREATE:
+            case ItemTransactionActions.BUY:
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                break;
+            case ItemTransactionActions.BREAK:
+            case ItemTransactionActions.DESTROY:
+            case ItemTransactionActions.SELL:
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.CRAFTED:
+                phrase = Phrase.LOOKUP_CRAFT;
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                action = "a:craft";
+                break;
+            case ItemTransactionActions.USED_TO_CRAFT:
+                phrase = Phrase.LOOKUP_CRAFT;
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                action = "a:craft";
+                break;
+            case ItemTransactionActions.EXTERNAL_ADD:
+                phrase = Phrase.LOOKUP_INVENTORY_CHANGE;
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                action = "a:inventorychange";
+                break;
+            case ItemTransactionActions.EXTERNAL_REMOVE:
+                phrase = Phrase.LOOKUP_INVENTORY_CHANGE;
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                action = "a:inventorychange";
+                break;
+            case ItemTransactionActions.REMOVE:
+                selector = Selector.SECOND;
+                tag = Color.RED + "-";
+                break;
+            case ItemTransactionActions.ADD:
+            default:
+                selector = Selector.FIRST;
+                tag = Color.GREEN + "+";
+                break;
+        }
+        return new InventoryFormat(phrase, selector, tag, action);
     }
 
     private static int compareRows(Row first, Row second) {
@@ -373,77 +580,16 @@ public final class LogicalLookupThread implements Runnable {
         }
     }
 
-    private static String describe(Connection connection, Row row) {
-        switch (row.table) {
-            case CHAT:
-                return "chat: " + Color.GREY + row.message;
-            case COMMAND:
-                return "command: " + Color.GREY + row.message;
-            case SESSION:
-                return row.action == 1 ? "logged in" : "logged out";
-            case USERNAME:
-                return "used username " + Color.DARK_AQUA + row.userName + Color.WHITE + " (" + row.uuid + ")";
-            case SIGN:
-                return "changed a sign";
-            case ENTITY_INTERACTION:
-                return "interacted with " + entityName(row.type);
-            case BLOCK:
-                return blockDescription(connection, row);
-            case CONTAINER:
-            case ENTITY_CONTAINER:
-                return (row.action == ItemTransactionActions.REMOVE ? "removed " : "added ") + "x" + row.amount + " " + materialName(row);
-            case ITEM:
-                return itemDescription(row);
-            default:
-                return row.table.getTableName();
-        }
-    }
-
-    private static String blockDescription(Connection connection, Row row) {
-        if (row.action == LookupActions.BLOCK_BREAK) {
-            return "broke " + materialName(row);
-        }
-        if (row.action == LookupActions.BLOCK_PLACE) {
-            return "placed " + materialName(row);
-        }
-        if (row.action == LookupActions.INTERACTION) {
-            return "clicked " + materialName(row);
-        }
-        if (row.action == LookupActions.ENTITY_KILL) {
-            if (row.type == 0) {
-                String playerName = UserStatement.getName(connection, row.data);
-                return "killed " + (playerName == null || playerName.isEmpty() ? "unknown player" : playerName);
-            }
-            return "killed " + entityName(row.type);
-        }
-        if (row.action == LookupActions.ENTITY_SPAWN) {
-            return "spawned " + entityName(row.type);
-        }
-        return "changed " + materialName(row);
-    }
-
     private static String entityName(int type) {
         return EntityInteractionLookup.entityName(type);
     }
 
-    private static String itemDescription(Row row) {
-        String name = materialName(row);
-        switch (row.action) {
-            case ItemTransactionActions.CRAFTED:
-                return "crafted x" + row.amount + " " + name;
-            case ItemTransactionActions.USED_TO_CRAFT:
-                return "used x" + row.amount + " " + name + " for crafting";
-            case ItemTransactionActions.EXTERNAL_ADD:
-                return "received x" + row.amount + " " + name + " externally";
-            case ItemTransactionActions.EXTERNAL_REMOVE:
-                return "lost x" + row.amount + " " + name + " externally";
-            case ItemTransactionActions.PICKUP:
-                return "picked up x" + row.amount + " " + name;
-            case ItemTransactionActions.DROP:
-                return "dropped x" + row.amount + " " + name;
-            default:
-                return "item action " + row.action + ": x" + row.amount + " " + name;
+    private static String itemName(Row row) {
+        Material material = ItemUtils.itemFilter(MaterialUtils.getType(row.type), false);
+        if (material == null) {
+            return materialName(row);
         }
+        return StringUtils.nameFilter(material.name().toLowerCase(Locale.ROOT), row.data);
     }
 
     private static String materialName(Row row) {
@@ -455,6 +601,38 @@ public final class LogicalLookupThread implements Runnable {
             return name.substring("minecraft:".length());
         }
         return name;
+    }
+
+    private static String signMessage(ResultSet result) throws Exception {
+        boolean front = result.getInt("face") == 0;
+        int start = front ? 1 : 5;
+        int end = front ? 4 : 8;
+        StringBuilder message = new StringBuilder();
+        for (int line = start; line <= end; line++) {
+            String value = result.getString("line_" + line);
+            if (value == null || value.isEmpty()) {
+                continue;
+            }
+            message.append(value);
+            if (!value.endsWith(" ")) {
+                message.append(' ');
+            }
+        }
+        return message.toString().trim();
+    }
+
+    private static final class InventoryFormat {
+        private final Phrase phrase;
+        private final String selector;
+        private final String tag;
+        private final String action;
+
+        private InventoryFormat(Phrase phrase, String selector, String tag, String action) {
+            this.phrase = phrase;
+            this.selector = selector;
+            this.tag = tag;
+            this.action = action;
+        }
     }
 
     private static final class Row {
@@ -474,6 +652,7 @@ public final class LogicalLookupThread implements Runnable {
         private int amount;
         private int rolledBack;
         private String message;
+        private byte[] metadata;
 
         private Row(LogicalTable table, long id, long time) {
             this.table = table;

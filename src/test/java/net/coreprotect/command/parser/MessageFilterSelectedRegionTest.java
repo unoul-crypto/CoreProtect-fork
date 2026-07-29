@@ -23,6 +23,7 @@ import net.coreprotect.command.logical.LogicalTable;
 import net.coreprotect.command.lookup.LogicalLookupThread;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.database.DatabaseType;
+import net.coreprotect.language.Phrase;
 import net.coreprotect.model.item.ItemTransactionActions;
 
 class MessageFilterSelectedRegionTest {
@@ -201,5 +202,28 @@ class MessageFilterSelectedRegionTest {
         finally {
             ConfigHandler.entitiesReversed.remove(entityId);
         }
+    }
+
+    @Test
+    void usesStandardLookupPhrasesForLogicalInventoryRows() throws Exception {
+        Method formatMethod = LogicalLookupThread.class.getDeclaredMethod("inventoryFormat", LogicalTable.class, int.class);
+        formatMethod.setAccessible(true);
+
+        Object crafted = formatMethod.invoke(null, LogicalTable.ITEM, ItemTransactionActions.CRAFTED);
+        Field phrase = crafted.getClass().getDeclaredField("phrase");
+        Field action = crafted.getClass().getDeclaredField("action");
+        phrase.setAccessible(true);
+        action.setAccessible(true);
+
+        assertEquals(Phrase.LOOKUP_CRAFT, phrase.get(crafted));
+        assertEquals("a:craft", action.get(crafted));
+
+        Object external = formatMethod.invoke(null, LogicalTable.ITEM, ItemTransactionActions.EXTERNAL_ADD);
+        assertEquals(Phrase.LOOKUP_INVENTORY_CHANGE, phrase.get(external));
+        assertEquals("a:inventorychange", action.get(external));
+
+        Object container = formatMethod.invoke(null, LogicalTable.CONTAINER, ItemTransactionActions.ADD);
+        assertEquals(Phrase.LOOKUP_CONTAINER, phrase.get(container));
+        assertEquals("a:container", action.get(container));
     }
 }
