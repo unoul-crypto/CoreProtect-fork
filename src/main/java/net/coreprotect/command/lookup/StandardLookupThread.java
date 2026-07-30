@@ -419,7 +419,12 @@ public class StandardLookupThread implements Runnable {
                                 String rbd = MaterialUtils.rolledBack(Integer.parseInt(data[8]), true) == 1 ? Color.STRIKETHROUGH : "";
                                 String timeago = ChatUtils.getTimeSince(Integer.parseInt(time), unixtimestamp, true);
                                 Material blockType = ItemUtils.itemFilter(MaterialUtils.getType(dtype), (Integer.parseInt(data[13]) == 0));
-                                String dname = StringUtils.nameFilter(blockType.name().toLowerCase(Locale.ROOT), ddata);
+                                String dname = MaterialUtils.getBlockDisplayName(dtype, ddata);
+                                String storedName = MaterialUtils.getBlockName(dtype);
+                                String resolvedKey = blockType == null ? "" : MaterialUtils.getMaterialKey(blockType);
+                                if (blockType != null && resolvedKey.startsWith("minecraft:") && (!storedName.contains(":") || storedName.startsWith("minecraft:"))) {
+                                    dname = StringUtils.nameFilter(blockType.name().toLowerCase(Locale.ROOT), ddata);
+                                }
                                 byte[] metadata = data[11] == null ? null : data[11].getBytes(StandardCharsets.ISO_8859_1);
                                 String tooltip = ItemUtils.getEnchantments(metadata, dtype, amount);
                                 Integer itemId = ItemUtils.makeGivableItem(ItemUtils.getItemStack(metadata, dtype, amount));

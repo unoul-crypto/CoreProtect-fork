@@ -58,6 +58,7 @@ import net.coreprotect.thread.Scheduler;
 import net.coreprotect.utility.Chat;
 import net.coreprotect.utility.Color;
 import net.coreprotect.utility.ItemUtils;
+import net.coreprotect.utility.MaterialUtils;
 import net.coreprotect.utility.WorldUtils;
 import net.coreprotect.utility.ErrorReporter;
 
@@ -175,8 +176,13 @@ public final class PlayerInteractListener extends Queue implements Listener {
             Block block = event.getClickedBlock();
             if (block != null) {
                 final Material type = block.getType();
+                final BlockState clickedState = block.getState();
                 boolean isInteractBlock = BlockGroup.INTERACT_BLOCKS.contains(type);
-                boolean isContainerBlock = BlockGroup.CONTAINERS.contains(type);
+                // Mohist exposes many modded inventories through Bukkit's holder
+                // API, but some mod block states remain generic. Their dynamically
+                // registered Material also cannot be in the compile-time list.
+                boolean isModdedBlock = !MaterialUtils.getMaterialKey(type).startsWith("minecraft:");
+                boolean isContainerBlock = BlockGroup.CONTAINERS.contains(type) || clickedState instanceof InventoryHolder || isModdedBlock;
                 boolean isSignBlock = BukkitAdapter.ADAPTER.isSign(type);
 
                 if (isInteractBlock || isContainerBlock || isSignBlock) {
@@ -190,7 +196,7 @@ public final class PlayerInteractListener extends Queue implements Listener {
                     else if (isContainerBlock && Config.getConfig(world).ITEM_TRANSACTIONS) {
                         Location location = null;
                         if (type.equals(Material.CHEST) || type.equals(Material.TRAPPED_CHEST) || BukkitAdapter.ADAPTER.isCopperChest(type)) {
-                            Chest chest = (Chest) clickedBlock.getState();
+                            Chest chest = (Chest) clickedState;
                             InventoryHolder inventoryHolder = chest.getInventory().getHolder();
 
                             if (inventoryHolder instanceof DoubleChest) {

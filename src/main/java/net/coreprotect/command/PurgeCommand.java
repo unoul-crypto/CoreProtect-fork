@@ -243,8 +243,8 @@ public class PurgeCommand extends Consumer {
                 String targetName = "";
 
                 if (restrictTarget instanceof Material) {
-                    targetName = ((Material) restrictTarget).name();
-                    int blockId = MaterialUtils.getBlockId(targetName, false);
+                    targetName = MaterialUtils.getMaterialKey((Material) restrictTarget);
+                    int blockId = MaterialUtils.getBlockId((Material) restrictTarget, false);
                     includeBlockIds.add(blockId);
                     if (includeListMaterial.length() == 0) {
                         includeListMaterial = includeListMaterial.append(blockId);
@@ -260,7 +260,7 @@ public class PurgeCommand extends Consumer {
                         includeBlockIds.add(legacyId);
                     }
 
-                    targetName = ((Material) restrictTarget).name().toLowerCase(Locale.ROOT);
+                    targetName = MaterialUtils.getMaterialKey((Material) restrictTarget);
                     item = (!item ? !(((Material) restrictTarget).isBlock()) : item);
                     hasBlock = true;
                 }

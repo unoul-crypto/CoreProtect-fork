@@ -237,7 +237,7 @@ public class ContainerLogger extends Queue {
                         int x = eventLocation.getBlockX();
                         int y = eventLocation.getBlockY();
                         int z = eventLocation.getBlockZ();
-                        int typeId = MaterialUtils.getBlockId(item.getType().name(), true);
+                        int typeId = MaterialUtils.getBlockId(item.getType());
                         int data = 0;
                         int amount = item.getAmount();
                         ContainerStatement.insert(preparedStmt, batchCount, time, userId, wid, x, y, z, typeId, data, amount, metadata, action, 0);
@@ -298,7 +298,7 @@ public class ContainerLogger extends Queue {
 
             int userId = UserStatement.getId(preparedStmt, event.getUser(), true);
             int time = (int) (System.currentTimeMillis() / 1000L);
-            int typeId = MaterialUtils.getBlockId(item.getType().name(), true);
+            int typeId = MaterialUtils.getBlockId(item.getType());
             ContainerStatement.insertEntity(preparedStmt, batchCount, time, userId, identity.getRowId(), wid, x, y, z, typeId, 0, item.getAmount(), metadata, action, 0);
             slot++;
         }

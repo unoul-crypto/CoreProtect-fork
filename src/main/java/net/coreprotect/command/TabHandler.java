@@ -19,6 +19,7 @@ import org.bukkit.util.StringUtil;
 
 import net.coreprotect.command.parser.RollbackStateParser;
 import net.coreprotect.config.ConfigHandler;
+import net.coreprotect.utility.MaterialUtils;
 
 public class TabHandler implements TabCompleter {
 
@@ -441,14 +442,17 @@ public class TabHandler implements TabCompleter {
             Material[] materialValues = Material.values();
             for (Material material : materialValues) {
                 if (material.isBlock() || material.isItem()) {
-                    materialList.add(material.name().toLowerCase(Locale.ROOT));
+                    String materialName = MaterialUtils.getMaterialKey(material);
+                    materialList.add(materialName.startsWith("minecraft:") ? materialName.substring("minecraft:".length()) : materialName);
                 }
             }
             for (Material exclude : excludeList) {
-                materialList.remove(exclude.name().toLowerCase(Locale.ROOT));
+                String materialName = MaterialUtils.getMaterialKey(exclude);
+                materialList.remove(materialName.startsWith("minecraft:") ? materialName.substring("minecraft:".length()) : materialName);
             }
             for (Material add : addList) {
-                materialList.add(add.name().toLowerCase(Locale.ROOT));
+                String materialName = MaterialUtils.getMaterialKey(add);
+                materialList.add(materialName.startsWith("minecraft:") ? materialName.substring("minecraft:".length()) : materialName);
             }
 
             // add custom tags

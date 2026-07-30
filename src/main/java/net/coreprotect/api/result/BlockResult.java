@@ -74,6 +74,9 @@ public class BlockResult implements CoreProtectResult {
         if (material == null) {
             return null;
         }
+        if (!MaterialUtils.getMaterialKey(material).startsWith("minecraft:")) {
+            return material;
+        }
 
         String typeName = material.name().toLowerCase(Locale.ROOT);
         return MaterialUtils.getType(StringUtils.nameFilter(typeName, data));

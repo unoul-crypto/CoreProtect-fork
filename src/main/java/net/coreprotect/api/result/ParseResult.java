@@ -71,6 +71,9 @@ public class ParseResult implements CoreProtectResult {
         if (material == null) {
             return null;
         }
+        if (!MaterialUtils.getMaterialKey(material).startsWith("minecraft:")) {
+            return material;
+        }
 
         String typeName = material.name().toLowerCase(Locale.ROOT);
         typeName = StringUtils.nameFilter(typeName, this.getData());

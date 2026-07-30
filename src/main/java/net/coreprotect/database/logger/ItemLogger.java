@@ -170,7 +170,7 @@ public class ItemLogger {
                     int x = eventLocation.getBlockX();
                     int y = eventLocation.getBlockY();
                     int z = eventLocation.getBlockZ();
-                    int typeId = MaterialUtils.getBlockId(item.getType().name(), true);
+                    int typeId = MaterialUtils.getBlockId(item.getType());
                     int amount = item.getAmount();
                     ItemStatement.insert(preparedStmt, batchCount, time, userId, wid, x, y, z, typeId, data, amount, action);
                 }

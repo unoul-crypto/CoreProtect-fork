@@ -7,8 +7,6 @@ import java.util.List;
 import java.util.Locale;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
-
 import net.coreprotect.command.parser.TimeParser;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.database.statement.UserStatement;
@@ -316,9 +314,12 @@ public final class LogicalQuerySql {
         }
         List<String> ids = new ArrayList<>();
         for (String materialName : splitValues(value)) {
-            Material material = Material.matchMaterial(materialName);
-            int id = material == null ? MaterialUtils.getBlockId(materialName, false) : MaterialUtils.getBlockId(material.name(), false);
-            ids.add(Integer.toString(id));
+            for (Integer id : MaterialUtils.getBlockIds(materialName)) {
+                ids.add(Integer.toString(id));
+            }
+        }
+        if (ids.isEmpty()) {
+            ids.add("-1");
         }
         return "type " + (exclude ? "NOT " : "") + "IN(" + String.join(",", ids) + ")";
     }

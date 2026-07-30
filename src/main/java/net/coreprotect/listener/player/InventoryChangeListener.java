@@ -65,9 +65,7 @@ public final class InventoryChangeListener extends Queue implements Listener {
     public static boolean inventoryTransaction(String user, BlockState blockState, ItemStack[] inventoryData) {
         if (user != null && blockState != null) {
             if (user.length() > 0) {
-                Material type = blockState.getType();
-
-                if (BlockGroup.CONTAINERS.contains(type) && blockState instanceof InventoryHolder) {
+                if (blockState instanceof InventoryHolder) {
                     InventoryHolder inventoryHolder = (InventoryHolder) blockState;
                     return onInventoryInteract(user, inventoryHolder.getInventory(), inventoryData, null, blockState.getLocation(), false);
                 }
@@ -146,9 +144,7 @@ public final class InventoryChangeListener extends Queue implements Listener {
                     if (inventoryHolder instanceof BlockState) {
                         BlockState state = (BlockState) inventoryHolder;
                         type = state.getType();
-                        if (BlockGroup.CONTAINERS.contains(type)) {
-                            playerLocation = state.getLocation();
-                        }
+                        playerLocation = state.getLocation();
                     }
                     else if (inventoryHolder instanceof DoubleChest) {
                         DoubleChest state = (DoubleChest) inventoryHolder;

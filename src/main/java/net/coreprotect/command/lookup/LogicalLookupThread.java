@@ -585,9 +585,18 @@ public final class LogicalLookupThread implements Runnable {
     }
 
     private static String itemName(Row row) {
+        String storedName = MaterialUtils.getBlockName(row.type);
+        if (storedName.contains(":") && !storedName.toLowerCase(Locale.ROOT).startsWith("minecraft:")) {
+            return storedName;
+        }
+
         Material material = ItemUtils.itemFilter(MaterialUtils.getType(row.type), false);
         if (material == null) {
             return materialName(row);
+        }
+        String resolvedKey = MaterialUtils.getMaterialKey(material);
+        if (!resolvedKey.startsWith("minecraft:")) {
+            return resolvedKey;
         }
         return StringUtils.nameFilter(material.name().toLowerCase(Locale.ROOT), row.data);
     }

@@ -414,12 +414,12 @@ public class LookupRaw extends Queue {
                     String targetName = "";
 
                     if (restrictTarget instanceof Material) {
-                        targetName = ((Material) restrictTarget).name();
+                        targetName = MaterialUtils.getMaterialKey((Material) restrictTarget);
                         if (includeListMaterial.length() == 0) {
-                            includeListMaterial = includeListMaterial.append(MaterialUtils.getBlockId(targetName, false));
+                            includeListMaterial = includeListMaterial.append(MaterialUtils.getBlockId((Material) restrictTarget, false));
                         }
                         else {
-                            includeListMaterial.append(",").append(MaterialUtils.getBlockId(targetName, false));
+                            includeListMaterial.append(",").append(MaterialUtils.getBlockId((Material) restrictTarget, false));
                         }
 
                         /* Include legacy IDs */
@@ -460,12 +460,12 @@ public class LookupRaw extends Queue {
                     String targetName = "";
 
                     if (restrictTarget instanceof Material) {
-                        targetName = ((Material) restrictTarget).name();
+                        targetName = MaterialUtils.getMaterialKey((Material) restrictTarget);
                         if (excludeListMaterial.length() == 0) {
-                            excludeListMaterial = excludeListMaterial.append(MaterialUtils.getBlockId(targetName, false));
+                            excludeListMaterial = excludeListMaterial.append(MaterialUtils.getBlockId((Material) restrictTarget, false));
                         }
                         else {
-                            excludeListMaterial.append(",").append(MaterialUtils.getBlockId(targetName, false));
+                            excludeListMaterial.append(",").append(MaterialUtils.getBlockId((Material) restrictTarget, false));
                         }
 
                         /* Include legacy IDs */

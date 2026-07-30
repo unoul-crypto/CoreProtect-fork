@@ -23,7 +23,7 @@ public class SkullBreakLogger {
                 return;
             }
             int time = (int) (System.currentTimeMillis() / 1000L);
-            int type = MaterialUtils.getBlockId(block.getType().name(), true);
+            int type = MaterialUtils.getBlockId(block.getType());
             Skull skull = (Skull) block;
             String skullOwner = "";
             String skullSkin = null;

@@ -19,6 +19,7 @@ import net.coreprotect.model.item.ItemTransactionActions;
 import net.coreprotect.utility.Chat;
 import net.coreprotect.utility.Color;
 import net.coreprotect.utility.ErrorReporter;
+import net.coreprotect.utility.MaterialUtils;
 
 public class RollbackComplete {
 
@@ -129,7 +130,7 @@ public class RollbackComplete {
                     String targetName = "";
 
                     if (restrictTarget instanceof Material) {
-                        targetName = ((Material) restrictTarget).name().toLowerCase(Locale.ROOT);
+                        targetName = MaterialUtils.getMaterialKey((Material) restrictTarget);
                         item = (!item ? !(((Material) restrictTarget).isBlock()) : item);
                         material = true;
                     }
@@ -191,7 +192,7 @@ public class RollbackComplete {
 
                     String targetName = "";
                     if (excludeTarget instanceof Material) {
-                        targetName = ((Material) excludeTarget).name().toLowerCase(Locale.ROOT);
+                        targetName = MaterialUtils.getMaterialKey((Material) excludeTarget);
                         item = (!item ? !(((Material) excludeTarget).isBlock()) : item);
                         material = true;
                     }
