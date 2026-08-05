@@ -26,6 +26,7 @@ This fork adds dedicated logging and selection improvements:
 * Already classified gameplay transactions, such as picking up, dropping, crafting, shooting, using containers, or interacting with inventory-holding blocks and entities, are suppressed from the external category to prevent duplicate records.
 * A player's saved inventory is treated as the login baseline, so reconnecting does not create external-add records for items the player already owned.
 * Paper provides complete player inventory slot-change detection. Bukkit and Spigot use a compatibility fallback for commands and creative inventory actions, but direct inventory API calls from another plugin may not be observable there.
+* On Mohist, breaking the Gravestone mod's `gravestone:gravestone` block is tracked with a delayed inventory comparison, so items restored directly into the player inventory are recorded as external additions at the grave location.
 * `r:#worldedit`, `r:#we`, and `inselectedregion:true` limit lookups, rollbacks, and restores to the exact shape of the current WorldEdit selection, including polygonal, ellipsoid, cylinder, and other non-cuboid regions.
 * The optional `logical-query-mode` setting enables `and`, `or`, `not`, and nested parentheses in lookup, rollback, restore, and purge filters.
 * Logical lookups query every matching log category instead of applying CoreProtect's normal implicit action selection.

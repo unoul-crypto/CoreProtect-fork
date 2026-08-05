@@ -19,6 +19,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
@@ -53,11 +54,14 @@ import net.coreprotect.config.Config;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.consumer.Queue;
 import net.coreprotect.thread.Scheduler;
+import net.coreprotect.utility.BlockTypeUtils;
 import net.coreprotect.utility.BlockUtils;
 import net.coreprotect.utility.ItemUtils;
+import net.coreprotect.utility.MaterialUtils;
 
 public final class ExternalInventoryChangeTracker extends Queue implements Listener {
 
+    private static final String GRAVESTONE_BLOCK_KEY = "gravestone:gravestone";
     private static final int INTERACTION_SUPPRESSION_TICKS = 1;
     private static final int LOGIN_BASELINE_TICKS = 20;
     // Paper can report the final slot state one or two ticks after the Bukkit
@@ -154,6 +158,20 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
     @EventHandler(priority = EventPriority.LOWEST)
     public void onBlockPlace(BlockPlaceEvent event) {
         suppress(event.getPlayer());
+    }
+
+    /**
+     * Gravestone restores its contents directly through the Minecraft player
+     * inventory when the grave is destroyed. Mohist consequently exposes the
+     * block break to Bukkit, but no pickup or inventory-click event describing
+     * the restored items. Capture the inventory while the Bukkit break event is
+     * still running and compare it after the mod has completed the destruction.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onGravestoneBreak(BlockBreakEvent event) {
+        if (isGravestone(event.getBlock())) {
+            captureSnapshot(event.getPlayer(), event.getBlock().getLocation());
+        }
     }
 
     @EventHandler(priority = EventPriority.LOWEST)
@@ -277,16 +295,41 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
     }
 
     private static void captureSnapshot(Player player) {
+        captureSnapshot(player, player == null ? null : player.getLocation());
+    }
+
+    private static void captureSnapshot(Player player, Location location) {
         if (!isEnabled(player)) {
             return;
         }
 
         UUID uuid = player.getUniqueId();
-        PendingSnapshot snapshot = PENDING_SNAPSHOTS.computeIfAbsent(uuid, ignored -> new PendingSnapshot(player));
+        PendingSnapshot snapshot = PENDING_SNAPSHOTS.computeIfAbsent(uuid, ignored -> new PendingSnapshot(player, location));
         if (snapshot.markScheduled()) {
             Object scheduleToken = snapshot.scheduleToken;
             Scheduler.scheduleSyncDelayedTask(CoreProtect.getInstance(), () -> flushSnapshot(player, scheduleToken), player, 1);
         }
+    }
+
+    private static boolean isGravestone(org.bukkit.block.Block block) {
+        if (block == null) {
+            return false;
+        }
+
+        if (isGravestoneKey(MaterialUtils.getMaterialKey(block.getType()))) {
+            return true;
+        }
+
+        try {
+            return isGravestoneKey(block.getBlockData().getAsString());
+        }
+        catch (Exception | LinkageError e) {
+            return false;
+        }
+    }
+
+    static boolean isGravestoneKey(String key) {
+        return GRAVESTONE_BLOCK_KEY.equals(BlockTypeUtils.getBlockDataKey(key));
     }
 
     private static void suppress(Player player) {
@@ -547,9 +590,9 @@ public final class ExternalInventoryChangeTracker extends Queue implements Liste
         private final Object scheduleToken = new Object();
         private boolean scheduled;
 
-        private PendingSnapshot(Player player) {
+        private PendingSnapshot(Player player, Location location) {
             this.contents = ItemUtils.getContainerState(player.getInventory().getContents());
-            this.location = player.getLocation().clone();
+            this.location = (location == null ? player.getLocation() : location).clone();
         }
 
         private synchronized boolean markScheduled() {
