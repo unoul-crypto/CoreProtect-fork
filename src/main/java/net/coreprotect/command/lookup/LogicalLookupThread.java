@@ -127,7 +127,14 @@ public final class LogicalLookupThread implements Runnable {
             Chat.sendMessage(sender, Color.WHITE + "----- " + Color.DARK_AQUA + Phrase.build(Phrase.LOOKUP_HEADER, "CoreProtect" + Color.WHITE + " | " + Color.DARK_AQUA) + Color.WHITE + " -----");
             int now = (int) (System.currentTimeMillis() / 1000L);
             for (Row row : rows.subList(start, end)) {
-                output(connection, row, now);
+                try {
+                    output(connection, row, now);
+                }
+                catch (Exception | LinkageError e) {
+                    // A single malformed legacy/modded row must not hide the
+                    // rest of the current page.
+                    ErrorReporter.report(e, ConfigHandler.EDITION_BRANCH.contains("-dev"));
+                }
             }
 
             if (totalRows > pageSize) {

@@ -4,6 +4,7 @@ import java.sql.Connection;
 
 import org.bukkit.entity.Player;
 
+import net.coreprotect.command.logical.LogicalQueryRegistry;
 import net.coreprotect.config.ConfigHandler;
 import net.coreprotect.database.Database;
 import net.coreprotect.language.Phrase;
@@ -29,6 +30,10 @@ public abstract class BaseInspector {
     }
 
     protected Connection getDatabaseConnection(Player player) throws Exception {
+        // Inspect lookups have their own pagination state. Do not allow /co page
+        // to resume an older logical command after the player inspected a block
+        // or container.
+        LogicalQueryRegistry.remove(player.getName());
         ConfigHandler.lookupThrottle.put(player.getName(), new Object[] { true, System.currentTimeMillis() });
 
         Connection connection = Database.getConnection(true);

@@ -691,13 +691,20 @@ public class LookupCommand {
     }
 
     private static boolean runLogicalLookup(CommandSender player, Command command, boolean permission, String[] args) {
+        boolean pageLookup = isLogicalPageLookup(args);
+        if (pageLookup && (!Integer.valueOf(5).equals(ConfigHandler.lookupType.get(player.getName())) || LogicalQueryRegistry.get(player.getName()) == null)) {
+            // Inspector and legacy lookups keep their pagination data in
+            // ConfigHandler.lookupCommand. A stale logical query must not
+            // intercept /co page or the clickable page arrows.
+            return false;
+        }
+
         if (!permission) {
             Chat.sendMessage(player, Color.DARK_AQUA + "CoreProtect " + Color.WHITE + "- " + Phrase.build(Phrase.NO_PERMISSION));
             return true;
         }
 
         try {
-            boolean pageLookup = isLogicalPageLookup(args);
             LogicalQuery query;
             Location origin;
             Integer[] worldEditSelection = null;

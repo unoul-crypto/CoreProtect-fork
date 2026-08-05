@@ -682,35 +682,58 @@ public class ItemUtils {
             return null;
         }
 
-        ItemStack item = new ItemStack(MaterialUtils.getType(type), amount);
-        item = (ItemStack) net.coreprotect.database.rollback.Rollback.populateItemStack(item, metadata)[2];
-        return item;
+        try {
+            Material material = MaterialUtils.getType(type);
+            if (material == null) {
+                // The material may belong to a removed mod, or the material map
+                // row may be missing. Lookup text can still use the stored
+                // registry name/internal ID; only metadata and /give are lost.
+                return null;
+            }
+
+            ItemStack item = new ItemStack(material, amount);
+            return (ItemStack) net.coreprotect.database.rollback.Rollback.populateItemStack(item, metadata)[2];
+        }
+        catch (Exception | LinkageError e) {
+            // A malformed or no-longer-supported metadata blob must not prevent
+            // the remaining records on the page from being displayed.
+            ErrorReporter.report(e, ConfigHandler.EDITION_BRANCH.contains("-dev"));
+            return null;
+        }
     }
 
     public static String getEnchantments(byte[] metadata, int type, int amount) {
-        var item = getItemStack(metadata, type, amount);
-        if (item == null) return "";
-
-        String displayName = item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : "";
-        StringBuilder message = new StringBuilder(Color.ITALIC + displayName + Color.GREY);
-
-        List<String> enchantments = ItemMetaHandler.getEnchantments(item, displayName);
-        for (String enchantment : enchantments) {
-            if (message.length() > 0) {
-                message.append("\n");
+        try {
+            ItemStack item = getItemStack(metadata, type, amount);
+            if (item == null) {
+                return "";
             }
-            message.append(enchantment);
-        }
 
-        if (!displayName.isEmpty()) {
-            message.insert(0, enchantments.isEmpty() ? Color.WHITE : Color.AQUA);
-        }
-        else if (!enchantments.isEmpty()) {
-            String name = StringUtils.capitalize(item.getType().name().replace("_", " "), true);
-            message.insert(0, Color.AQUA + Color.ITALIC + name);
-        }
+            String displayName = item.hasItemMeta() && item.getItemMeta().hasDisplayName() ? item.getItemMeta().getDisplayName() : "";
+            StringBuilder message = new StringBuilder(Color.ITALIC + displayName + Color.GREY);
 
-        return message.toString();
+            List<String> enchantments = ItemMetaHandler.getEnchantments(item, displayName);
+            for (String enchantment : enchantments) {
+                if (message.length() > 0) {
+                    message.append("\n");
+                }
+                message.append(enchantment);
+            }
+
+            if (!displayName.isEmpty()) {
+                message.insert(0, enchantments.isEmpty() ? Color.WHITE : Color.AQUA);
+            }
+            else if (!enchantments.isEmpty()) {
+                String name = StringUtils.capitalize(item.getType().name().replace("_", " "), true);
+                message.insert(0, Color.AQUA + Color.ITALIC + name);
+            }
+
+            return message.toString();
+        }
+        catch (Exception | LinkageError e) {
+            ErrorReporter.report(e, ConfigHandler.EDITION_BRANCH.contains("-dev"));
+            return "";
+        }
     }
 
     public static Map<Integer, Object> serializeItemStackLegacy(ItemStack itemStack, String faceData, int slot) {
